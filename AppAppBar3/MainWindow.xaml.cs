@@ -94,12 +94,12 @@ namespace AppAppBar3
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 appWindow = AppWindow.GetFromWindowId(windowId);
-                // Remove the title bar
+                // Eventhough we removed the title bar with win32 api, we still need to set the title bar properties to make the content
+                // move into window title area
                 appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-                appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-                appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-                appWindow.TitleBar.ButtonForegroundColor = Colors.Transparent;
-               // appWindow.Presenter.SetBorderAndTitleBar(false, false);
+               // appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
+               // appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+               // appWindow.TitleBar.ButtonForegroundColor = Colors.Transparent;
                 if (appWindow.Presenter is OverlappedPresenter presenter)
                 {
                     presenter.IsResizable = false;
@@ -127,10 +127,7 @@ namespace AppAppBar3
         private void RegisterAppBar()
         {
             var hWnd = WindowNative.GetWindowHandle(this);
-            //var screen = DisplayInformation.GetForCurrentView();
-            //double scaleFactor = screen.ResolutionScale == ResolutionScale.Invalid ? 1 : (double)screen.ResolutionScale / 100;
-            //int screenWidth = (int)(screen.ScreenWidthInRawPixels * scaleFactor);
-            //int screenHeight = (int)(screen.ScreenHeightInRawPixels * scaleFactor);
+            
             int screenWidth = (int)(GetSystemMetrics(SM_CXSCREEN) );
             int screenHeight = (int)(GetSystemMetrics(SM_CYSCREEN) );
 
@@ -154,13 +151,13 @@ namespace AppAppBar3
             SHAppBarMessage(ABM_SETPOS, ref abd);
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
            
-            //remove corner radius by removing border 
+            //remove corner radius by removing border and caption
             IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hwnd, GWL_STYLE, style);
 
             //set window size and position to appbar
-            SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
+            SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, SWP_NOZORDER | SWP_NOACTIVATE | WS_CAPTION);
         }
         [DllImport("user32.dll", SetLastError = true)]
         static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
