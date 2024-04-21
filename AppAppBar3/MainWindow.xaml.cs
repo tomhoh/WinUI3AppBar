@@ -38,8 +38,17 @@ namespace AppAppBar3
 
         [DllImport("shell32.dll", SetLastError = true)]
         public static extern IntPtr SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
+        public const int GWL_STYLE = -16;
+        public const int WS_CAPTION = 0x00C00000;
+        public const int WS_THICKFRAME = 0x00040000;
 
-        public struct APPBARDATA
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        public static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+    
+    public struct APPBARDATA
         {
             public int cbSize;
             public IntPtr hWnd;
@@ -143,6 +152,14 @@ namespace AppAppBar3
             SHAppBarMessage(ABM_NEW, ref abd);
             SHAppBarMessage(ABM_QUERYPOS, ref abd);
             SHAppBarMessage(ABM_SETPOS, ref abd);
+            IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+           
+            //remove corner radius by removing border 
+            IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
+            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
+            SetWindowLong(hwnd, GWL_STYLE, style);
+
+            //set window size and position to appbar
             SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
         [DllImport("user32.dll", SetLastError = true)]
