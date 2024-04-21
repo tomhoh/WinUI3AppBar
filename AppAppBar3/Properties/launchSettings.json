@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AppAppBar3 (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "AppAppBar3 (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
