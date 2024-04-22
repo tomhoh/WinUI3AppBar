@@ -5,8 +5,8 @@ Win32 Appbar (taskbar) created from a WINUI 3 window. Similar to WPF and WinForm
 this.AppWindow.Resize(new((int)width*scale, (int)height*scale))
 
 [Link](https://www.codeproject.com/Tips/5360135/Getting-Display-Information-in-Windows-UI-3)
-
-    private async Task SizeWindow( AppWindow appWindow )
+````
+private async Task SizeWindow( AppWindow appWindow )
 {
     var displayList = await DeviceInformation.FindAllAsync
                       ( DisplayMonitor.GetDeviceSelector() );
@@ -38,3 +38,4 @@ this.AppWindow.Resize(new((int)width*scale, (int)height*scale))
 
     appWindow.Resize( winSize );
 }
+````
