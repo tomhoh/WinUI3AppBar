@@ -40,6 +40,8 @@ private async Task SizeWindow( AppWindow appWindow )
 }
 ````
 
+[Link](https://stackoverflow.com/questions/76631011/appwindow-moveandresize-dpi-wrong-window-size-with-multple-displays-and-differe)
+
 ````
 Windows.Graphics.RectInt32 rect = new()
 {
