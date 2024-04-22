@@ -39,3 +39,17 @@ private async Task SizeWindow( AppWindow appWindow )
     appWindow.Resize( winSize );
 }
 ````
+
+````
+Windows.Graphics.RectInt32 rect = new()
+{
+    X = (displayArea.WorkArea.Width / 2) - (_wndWidth / 2),
+    Y = (displayArea.WorkArea.Height / 3) - (_wndHeight / 2),
+    Height = _wndHeight,
+    Width = _wndWidth
+};
+
+_appWindow.MoveAndResize(rect, displayArea);
+_appWindow.Show();
+_appWindow.MoveInZOrderAtTop();
+````
