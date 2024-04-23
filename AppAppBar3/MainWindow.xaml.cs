@@ -17,6 +17,17 @@ using WinRT.Interop;
 using Windows.Graphics.Display;
 using Microsoft.UI.Windowing;
 using Microsoft.UI;
+using System.Threading.Tasks;
+using Windows.Devices.Display;
+using Windows.Devices.Enumeration;
+using Windows.Graphics;
+using System.Diagnostics;
+using System.Threading;
+using System.Collections.ObjectModel;
+using System.Collections;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 
 
 // To learn more about WinUI, the WinUI project structure,
@@ -27,8 +38,22 @@ namespace AppAppBar3
     /// <summary>
     /// An empty window that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class MainWindow : Window
+    public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
+        private String[] _MonItems;// = new String[10];
+        private ObservableCollection<string> _MonitorList; 
+
+        public ObservableCollection<string> MonitorList
+        {
+            get => _MonitorList;
+            set
+            {
+                _MonitorList = value;
+                OnPropertyChanged();
+            }
+        }
+        public string[] MonItems() { return _MonItems; }
+        public List<string> monitors;
         private const uint ABM_NEW = 0x00000000;
         private const uint ABM_REMOVE = 0x00000001;
         private const uint ABM_QUERYPOS = 0x00000002;
@@ -85,10 +110,39 @@ namespace AppAppBar3
             this.InitializeComponent();
             this.Activated += OnActivated;
             this.Closed += OnClosed;
+            this.AppWindow.IsShownInSwitchers = false;
+
+
+
+            // = getMonitors();
+
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            Debug.WriteLine("MonitorList changed*****" + propertyName);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private void OnActivated(object sender, WindowActivatedEventArgs args)
-        {
+        { 
+            cbMonitor.DataContext = this;
+            monitors = MonitorHelper.GetMonitors();
+            // Debug.WriteLine("Monitor List*****"+monitors);
+           // MonitorList = new ObservableCollection<string>();
+            foreach (var monitor in monitors)
+            {
+              // MonitorList.Add(monitor);
+                Debug.WriteLine(monitor);
+               // Debug.WriteLine("Monitor List*****" + MonitorList);
+                // _MonItems[0] = monitor;
+            }
+            // If you specifically need an array:
+           // _MonItems = monitors.ToArray();
+            MonitorList = new ObservableCollection<string>(monitors);
+
             if (appWindow == null)
             {
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
@@ -111,12 +165,15 @@ namespace AppAppBar3
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
-                    RegisterAppBar();
+                    
+                    RegisterAppBar(ABEdge.Top);
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
                 }
 
             }
+            
+           
         }
         [DllImport("user32.dll")]
         static extern int GetSystemMetrics(int nIndex);
@@ -124,8 +181,9 @@ namespace AppAppBar3
         const int SM_CXSCREEN = 0;  // Index for screen width in pixels
         const int SM_CYSCREEN = 1;  // Index for screen height in pixels
 
-        private void RegisterAppBar()
+        private void RegisterAppBar(ABEdge edge)
         {
+            
             var hWnd = WindowNative.GetWindowHandle(this);
             
             int screenWidth = (int)(GetSystemMetrics(SM_CXSCREEN) );
@@ -136,14 +194,14 @@ namespace AppAppBar3
                 cbSize = Marshal.SizeOf(typeof(APPBARDATA)),
                 hWnd = hWnd,
                 uCallbackMessage = 0, // Use a WM_USER range message for handling AppBar messages
-                uEdge = (uint)ABEdge.Top, // Can be Left, Top, Right, Bottom
+                uEdge = (uint)edge, // Can be Left, Top, Right, Bottom
             };
 
             RECT rc;
             rc.left = 0;
             rc.top = 0;
             rc.right = screenWidth; // Width of the AppBar
-            rc.bottom = 60; // Height of the AppBar
+            rc.bottom = 100; // Height of the AppBar
             abd.rc = rc;
 
             SHAppBarMessage(ABM_NEW, ref abd);
@@ -157,7 +215,9 @@ namespace AppAppBar3
             SetWindowLong(hwnd, GWL_STYLE, style);
 
             //set window size and position to appbar
-            SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, SWP_NOZORDER | SWP_NOACTIVATE | WS_EX_TOOLWINDOW);
+           // SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, SWP_NOZORDER | SWP_NOACTIVATE | WS_EX_TOOLWINDOW | WS_VISIBLE);
+            SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, SWP_NOZORDER | SWP_NOACTIVATE );
+
         }
         [DllImport("user32.dll", SetLastError = true)]
         static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
@@ -165,6 +225,9 @@ namespace AppAppBar3
         const uint SWP_NOZORDER = 0x0004;
         const uint SWP_NOACTIVATE = 0x0010;
         const uint WS_EX_TOOLWINDOW = 0x00000080;
+        const uint WS_VISIBLE = 0x10000000;
+
+
         private void OnClosed(object sender, WindowEventArgs args)
         {
             UnregisterAppBar();
@@ -178,6 +241,52 @@ namespace AppAppBar3
                 hWnd = WindowNative.GetWindowHandle(this)
             };
             SHAppBarMessage(ABM_REMOVE, ref abd);
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
+
+        private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private async Task getMonitors()
+        {
+           
+            Debug.WriteLine("Monitor List**********" );
+            var displayList = await DeviceInformation.FindAllAsync
+                              (DisplayMonitor.GetDeviceSelector());
+
+            if (!displayList.Any())
+                return;
+            foreach (var display in displayList)
+            {
+                var monitorInfo = await DisplayMonitor.FromInterfaceIdAsync(display.Id);
+                Debug.WriteLine("Monitor ID**********" + display.Name);
+                Debug.WriteLine("Monitor Properites**********" + display.Properties.ToList().ToString());
+                Debug.WriteLine("Monitor ID**********" + display.Id);
+                Debug.WriteLine("Monitor List**********" + monitorInfo.DisplayName);
+                _MonItems[0] = (monitorInfo.DisplayName);
+                
+            }
+
+            Debug.WriteLine("This is the items array" + _MonItems[0]);
+
+
+
         }
     }
 }

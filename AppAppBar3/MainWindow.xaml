@@ -7,18 +7,37 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d" >
-    
-        
-    <CommandBar>
-        <CommandBar.Resources>
-            <Style TargetType="AppBarButton">
-                <Setter Property="BorderThickness" Value="0"/>
-            </Style>
-        </CommandBar.Resources>
-        <AppBarButton Icon="Add" Label="Add"/>
-        <AppBarButton Icon="Edit" Label="Edit"/>
-        <AppBarButton Icon="Delete" Label="Delete"/>
-    </CommandBar>
-    
+
+
+   
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+       
+        <Button Content="Edge">
+    <Button.Flyout>
+                <MenuFlyout>
+                    <MenuFlyoutItem Text="Top"  Tag="ABEdge.Top"/>
+                    <MenuFlyoutItem Text="Left"  Tag="ABEdge.Left"/>
+                    <MenuFlyoutItem Text="Right"  Tag="ABEdge.Right"/>
+                    <MenuFlyoutItem Text="Bottom"  Tag="ABEdge.Bottom"/>
+                </MenuFlyout>
+
+            </Button.Flyout>
+</Button>
+            
+
+
+                <ComboBox x:Name="cbMonitor"  Margin="0,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200">
+           
+        </ComboBox>
+        <Button Content="Close" Margin="80,0,0,0" Click="CloseButton_Click" />
+        <CommandBar HorizontalAlignment="Right">
+            <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
+            <AppBarButton Icon="DockRight" Label="Right"/>
+            <AppBarButton Icon="DockBottom" Label="Bottom"/>
+        </CommandBar>
+    </StackPanel>
+
+
+
 
 </Window>
