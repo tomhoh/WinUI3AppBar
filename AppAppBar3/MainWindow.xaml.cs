@@ -27,6 +27,7 @@ using System.Collections.ObjectModel;
 using System.Collections;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Windows.UI.ViewManagement;
 
 
 
@@ -52,8 +53,20 @@ namespace AppAppBar3
                 OnPropertyChanged();
             }
         }
+
+        private string _Edge;
+
+        public string Edge
+        {
+            get => _Edge;
+            set
+            {
+                _Edge = value;
+                OnPropertyChanged();
+            }
+        }
         public string[] MonItems() { return _MonItems; }
-        public List<string> monitors;
+        public List<string> monitors; 
         private const uint ABM_NEW = 0x00000000;
         private const uint ABM_REMOVE = 0x00000001;
         private const uint ABM_QUERYPOS = 0x00000002;
@@ -111,6 +124,7 @@ namespace AppAppBar3
             this.Activated += OnActivated;
             this.Closed += OnClosed;
             this.AppWindow.IsShownInSwitchers = false;
+           
 
 
 
@@ -127,8 +141,10 @@ namespace AppAppBar3
         }
 
         private void OnActivated(object sender, WindowActivatedEventArgs args)
-        { 
+        {
+           
             cbMonitor.DataContext = this;
+            edgeMonitor.DataContext = this;
             monitors = MonitorHelper.GetMonitors();
             // Debug.WriteLine("Monitor List*****"+monitors);
            // MonitorList = new ObservableCollection<string>();
@@ -167,6 +183,7 @@ namespace AppAppBar3
                 {
                     
                     RegisterAppBar(ABEdge.Top);
+                    Edge = "Top";
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
                 }
@@ -188,7 +205,8 @@ namespace AppAppBar3
             
             int screenWidth = (int)(GetSystemMetrics(SM_CXSCREEN) );
             int screenHeight = (int)(GetSystemMetrics(SM_CYSCREEN) );
-
+            
+            
             var abd = new APPBARDATA
             {
                 cbSize = Marshal.SizeOf(typeof(APPBARDATA)),
@@ -198,10 +216,42 @@ namespace AppAppBar3
             };
 
             RECT rc;
-            rc.left = 0;
-            rc.top = 0;
-            rc.right = screenWidth; // Width of the AppBar
-            rc.bottom = 100; // Height of the AppBar
+
+            switch (edge)
+            {
+                case ABEdge.Left:
+                
+                    rc.left = 0;
+                    rc.top = 0;
+                    rc.right = 100; // Width of the AppBar
+                    rc.bottom = screenHeight; // Height of the AppBar
+                    break;
+                case ABEdge.Right:
+                    rc.left = screenWidth - 100;
+                    rc.top = 0;
+                    rc.right = screenWidth; // Width of the AppBar
+                    rc.bottom = screenHeight; // Height of the AppBar
+                    break;
+                case ABEdge.Top:
+                    rc.left = 0;
+                    rc.top = 0;
+                    rc.right = screenWidth; // Width of the AppBar
+                    rc.bottom = 100; // Height of the AppBar
+                    break;
+                case ABEdge.Bottom:
+                    rc.left = 0;
+                    rc.top = screenHeight - 100;
+                    rc.right = screenWidth; // Width of the AppBar
+                    rc.bottom = screenHeight; // Height of the AppBar
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(edge));
+            }
+
+           // rc.left = 0;
+           // rc.top = 0;
+           // rc.right = screenWidth; // Width of the AppBar
+           // rc.bottom = 100; // Height of the AppBar
             abd.rc = rc;
 
             SHAppBarMessage(ABM_NEW, ref abd);
@@ -287,6 +337,101 @@ namespace AppAppBar3
 
 
 
+        }
+
+        private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            Debug.WriteLine("Edge Selection Changed********** "+ Edge);
+            if (Edge == "Top")
+            {
+                Debug.WriteLine("Edge Selection Top " + Edge);
+                RegisterAppBar(ABEdge.Top);
+                stPanel.Orientation = Orientation.Horizontal;
+            }
+            else if (Edge == "Bottom")
+            {
+                RegisterAppBar(ABEdge.Bottom);
+                stPanel.Orientation = Orientation.Horizontal;
+            }
+            else if (Edge == "Left")
+            {
+                RegisterAppBar(ABEdge.Left);
+                stPanel.Orientation = Orientation.Vertical;
+            }
+            else if (Edge == "Right")
+            {
+                RegisterAppBar(ABEdge.Right);
+                stPanel.Orientation = Orientation.Vertical;
+            }
+        }
+        WebWindow webWindow;
+        private void openWebWindow(object sender, RoutedEventArgs e)
+        {
+            if (webWindow == null)
+            {
+                webWindow = new WebWindow();
+                webWindow.Activate();
+                DockToAppBar(webWindow);
+            }
+            else
+            {
+                webWindow.Close();
+                webWindow = null;
+            }
+            
+          
+           
+        }
+
+        void DockToAppBar(WebWindow webW)
+        {
+            
+            var windowBounds = webW.Bounds;
+            var taskbarRect = this.Bounds;
+            //var screenRect = Windows.UI.Core.CoreWindow.GetForCurrentThread().Bounds;
+            int screenWidth = (int)(GetSystemMetrics(SM_CXSCREEN));
+            int screenHeight = (int)(GetSystemMetrics(SM_CYSCREEN));
+            var workarea = MonitorHelper.GetWorkArea();
+
+            double appBarWidth = taskbarRect.Width;
+            double appBarHeight = taskbarRect.Height;
+            int newWindowWidth = 0;// = screenWidth;
+            int newWindowHeight =0;// = screenHeight - 100;
+            int newWindowX=0;//= (int)(taskbarRect.X);
+            int newWindowY=0;//= 100;
+            if (Edge == "Top")
+            {
+                newWindowWidth = screenWidth;
+                newWindowHeight = workarea.bottom - 100;
+                newWindowX = (int)(taskbarRect.X);
+                newWindowY = 100;
+
+            }
+            else if (Edge == "Bottom")
+            {
+                newWindowWidth = screenWidth;
+                newWindowHeight = screenHeight - 100;
+                newWindowX = 0;
+                newWindowY = 0;
+            }
+            else if (Edge == "Left")
+            {
+                newWindowWidth = screenWidth-100;
+                newWindowHeight = screenHeight;
+                newWindowX = 100;
+                newWindowY = 0;
+
+            }
+            else if (Edge == "Right")
+            {
+                newWindowWidth = screenWidth - 100;
+                newWindowHeight = screenHeight;
+                newWindowX = 0;
+                newWindowY = 0;
+            }
+            webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
+           // webW = new Rect(newWindowX,newWindowY,newWindowWidth,newWindowHeight);
+            
         }
     }
 }

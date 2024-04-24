@@ -6,27 +6,24 @@
     xmlns:local="using:AppAppBar3"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" >
+    mc:Ignorable="d">
 
 
    
-        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
-       
-        <Button Content="Edge">
-    <Button.Flyout>
-                <MenuFlyout>
-                    <MenuFlyoutItem Text="Top"  Tag="ABEdge.Top"/>
-                    <MenuFlyoutItem Text="Left"  Tag="ABEdge.Left"/>
-                    <MenuFlyoutItem Text="Right"  Tag="ABEdge.Right"/>
-                    <MenuFlyoutItem Text="Bottom"  Tag="ABEdge.Bottom"/>
-                </MenuFlyout>
+        <StackPanel x:Name="stPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
 
-            </Button.Flyout>
-</Button>
-            
+        <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow">
+    
+</ToggleButton>
 
 
-                <ComboBox x:Name="cbMonitor"  Margin="0,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200">
+        <ComboBox x:Name="edgeMonitor"  Margin="0,8,0,0" SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="200" >
+            <x:String>Top</x:String>
+            <x:String>Bottom</x:String>
+            <x:String>Left</x:String>
+            <x:String>Right</x:String>
+        </ComboBox>
+        <ComboBox x:Name="cbMonitor"  Margin="0,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200" >
            
         </ComboBox>
         <Button Content="Close" Margin="80,0,0,0" Click="CloseButton_Click" />

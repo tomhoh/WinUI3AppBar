@@ -12,6 +12,9 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <StartupObject></StartupObject>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="WebWindow.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -36,6 +39,11 @@
   -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="WebWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
   <!-- 

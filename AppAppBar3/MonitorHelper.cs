@@ -15,9 +15,14 @@ namespace AppAppBar3
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+         
+        [DllImport("user32.dll")]
+         static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref RECT pvParam, uint fWinIni);
 
         // Define the MONITORINFOEX structure
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+
+      
         private struct MONITORINFOEX
         {
             public int cbSize;
@@ -30,16 +35,21 @@ namespace AppAppBar3
 
         // Define the RECT structure
         [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
+        public struct RECT
         {
             public int left;
             public int top;
             public int right;
             public int bottom;
         }
-
+        const uint SPI_GETWORKAREA = 0x0030;
         private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
-
+        public static RECT GetWorkArea()
+        {
+            RECT rect = new RECT();
+            SystemParametersInfo(SPI_GETWORKAREA, 0, ref rect, 0);
+            return rect;
+        }
         public static List<string> GetMonitors()
         {
             List<string> monitorNames = new List<string>();
