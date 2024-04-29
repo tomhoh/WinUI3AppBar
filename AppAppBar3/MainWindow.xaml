@@ -9,30 +9,31 @@
     mc:Ignorable="d">
 
 
-   
+    <Grid Background="{ThemeResource SystemChromeMediumLowColor}">
         <StackPanel x:Name="stPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
 
-        <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow">
-    
-</ToggleButton>
+            <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow">
+
+            </ToggleButton>
 
 
-        <ComboBox x:Name="edgeMonitor"  Margin="0,8,0,0" SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="200" >
-            <x:String>Top</x:String>
-            <x:String>Bottom</x:String>
-            <x:String>Left</x:String>
-            <x:String>Right</x:String>
-        </ComboBox>
-        <ComboBox x:Name="cbMonitor"  Margin="0,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200" >
-           
-        </ComboBox>
-        <Button Content="Close" Margin="80,0,0,0" Click="CloseButton_Click" />
-        <CommandBar HorizontalAlignment="Right">
-            <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
-            <AppBarButton Icon="DockRight" Label="Right"/>
-            <AppBarButton Icon="DockBottom" Label="Bottom"/>
-        </CommandBar>
-    </StackPanel>
+            <ComboBox x:Name="edgeMonitor"  Margin="0,8,0,0"  SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="200" >
+                <x:String>Top</x:String>
+                <x:String>Bottom</x:String>
+                <x:String>Left</x:String>
+                <x:String>Right</x:String>
+            </ComboBox>
+            <ComboBox x:Name="cbMonitor"  Margin="0,8,0,0" SelectedValue="{Binding MonitorList, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200" >
+
+            </ComboBox>
+            <Button Content="Close" Margin="80,0,0,0" Click="CloseButton_Click" />
+            <CommandBar HorizontalAlignment="Right">
+                <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
+                <AppBarButton Icon="DockRight" Label="Right"/>
+                <AppBarButton Icon="DockBottom" Label="Bottom"/>
+            </CommandBar>
+        </StackPanel>
+    </Grid>
 
 
 
