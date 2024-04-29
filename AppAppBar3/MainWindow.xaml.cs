@@ -196,8 +196,7 @@ namespace AppAppBar3
                     this.Activated -= OnActivated;
                 }
                 monitors = MonitorHelper.GetMonitors();
-                // Debug.WriteLine("Monitor List*****"+monitors);
-                // MonitorList = new ObservableCollection<string>();
+             
                 foreach (var monitor in monitors)
                 {
                     // MonitorList.Add(monitor);
@@ -205,12 +204,11 @@ namespace AppAppBar3
                     // Debug.WriteLine("Monitor List*****" + MonitorList);
                     // _MonItems[0] = monitor;
                 }
-                // If you specifically need an array:
-                // _MonItems = monitors.ToArray();
+                
                 MonitorList = new ObservableCollection<string>(monitors);
-                //cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
+               
                 cbMonitor.SelectedIndex = 0;
-                //cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
+                
             }
             
            
@@ -289,16 +287,12 @@ namespace AppAppBar3
                     throw new ArgumentOutOfRangeException(nameof(edge));
             }
 
-           // rc.left = 0;
-           // rc.top = 0;
-           // rc.right = screenWidth; // Width of the AppBar
-           // rc.bottom = 100; // Height of the AppBar
+           
             abd.rc = rc;
             
             SHAppBarMessage(ABM_NEW, ref abd);
             SHAppBarMessage(ABM_QUERYPOS, ref abd);
             SHAppBarMessage(ABM_SETPOS, ref abd);
-            //IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
            
             //remove corner radius by removing border and caption
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
@@ -338,6 +332,10 @@ namespace AppAppBar3
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
+            if(webWindow != null)
+            {
+                webWindow.Close();
+            }   
             UnregisterAppBar();
             this.Close();
         }
@@ -345,39 +343,15 @@ namespace AppAppBar3
         private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
-          
             Debug.WriteLine("Monitor selection changed");
             relocateWindowLocation();
             edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
-            // if((cbMonitor.SelectedItem as ComboBoxItem) != null)
-            // {
+            
             selectedItemsText = (cbMonitor.SelectedItem as String);
                
                 Debug.WriteLine("Selected Monitor Text**********" + (cbMonitor.SelectedItem as string));
                
-            /*if (Edge == "Top")
-            {
-                Debug.WriteLine("Edge Selection Top " + Edge);
-                RegisterAppBar(ABEdge.Top, cbMonitor.SelectedItem as string);
-                stPanel.Orientation = Orientation.Horizontal;
-            }
-            else if (Edge == "Bottom")
-            {
-                RegisterAppBar(ABEdge.Bottom, cbMonitor.SelectedItem as string);
-                stPanel.Orientation = Orientation.Horizontal;
-            }
-            else if (Edge == "Left")
-            {
-                //UnregisterAppBar();
-                RegisterAppBar(ABEdge.Left, cbMonitor.SelectedItem as string);
-                stPanel.Orientation = Orientation.Vertical;
-            }
-            else if (Edge == "Right")
-            {
-                RegisterAppBar(ABEdge.Right, cbMonitor.SelectedItem as string);
-                stPanel.Orientation = Orientation.Vertical;
-            }*/
-           
+
 
         }
 
@@ -413,7 +387,7 @@ namespace AppAppBar3
         }
         private void relocateWindowLocation()
         {
-
+           
             if (Edge == "Top")
             {
                 Debug.WriteLine("Edge Selection Top " + Edge);
@@ -436,37 +410,19 @@ namespace AppAppBar3
                 RegisterAppBar(ABEdge.Right, cbMonitor.SelectedItem as string);
                 stPanel.Orientation = Orientation.Vertical;
             }
+            if (webWindow != null)
+            {
+                DockToAppBar(webWindow);
+                // webWindow.Close();
+               // webButton.IsChecked = false;
+            }
         }
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
            
             relocateWindowLocation();
             Debug.WriteLine("Edge Selection Changed********** "+ Edge);
-            Debug.WriteLine("CB TEXT********** " + cbMonitor.SelectedItem as string);
            
-            //UnregisterAppBar();
-            /*  if (Edge == "Top")
-              {
-                  Debug.WriteLine("Edge Selection Top " + Edge);
-                  RegisterAppBar(ABEdge.Top, cbMonitor.SelectedItem as string);
-                  stPanel.Orientation = Orientation.Horizontal;
-              }
-              else if (Edge == "Bottom")
-              {
-                  RegisterAppBar(ABEdge.Bottom, cbMonitor.SelectedItem as string);
-                  stPanel.Orientation = Orientation.Horizontal;
-              }
-              else if (Edge == "Left")
-              {
-                  //UnregisterAppBar();
-                  RegisterAppBar(ABEdge.Left, cbMonitor.SelectedItem as string);
-                  stPanel.Orientation = Orientation.Vertical;
-              }
-              else if (Edge == "Right")
-              {
-                  RegisterAppBar(ABEdge.Right, cbMonitor.SelectedItem as string);
-                  stPanel.Orientation = Orientation.Vertical;
-              }*/
         }
         WebWindow webWindow;
         private void openWebWindow(object sender, RoutedEventArgs e)
