@@ -30,6 +30,9 @@ namespace AppAppBar3
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("user32.dll")]
+        public static extern uint GetDpiForWindow(IntPtr hWnd);
+
         public enum MONITOR_DPI_TYPE
         {
             MDT_EFFECTIVE_DPI = 0,
@@ -79,6 +82,7 @@ namespace AppAppBar3
         {
             RECT rect = new RECT();
             SystemParametersInfo(SPI_GETWORKAREA, 0, ref rect, 0);
+            
             return rect;
         }
         public static List<string> GetMonitors()

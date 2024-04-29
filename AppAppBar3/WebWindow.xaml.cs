@@ -51,6 +51,8 @@ namespace AppAppBar3
             IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hwnd, GWL_STYLE, style);
+            uint dpiX, dpiY;
+            dpiX = dpiY = MonitorHelper.GetDpiForWindow(hwnd);
         }
         private async void InitializeWebView()
         {
