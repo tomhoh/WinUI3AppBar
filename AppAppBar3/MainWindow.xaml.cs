@@ -335,14 +335,14 @@ namespace AppAppBar3
             if(webWindow != null)
             {
                 webWindow.Close();
-            }   
+            }
             UnregisterAppBar();
             this.Close();
         }
 
         private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-
+            edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
             Debug.WriteLine("Monitor selection changed");
             relocateWindowLocation();
             edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
@@ -387,7 +387,7 @@ namespace AppAppBar3
         }
         private void relocateWindowLocation()
         {
-           
+            UnregisterAppBar();
             if (Edge == "Top")
             {
                 Debug.WriteLine("Edge Selection Top " + Edge);
@@ -419,7 +419,7 @@ namespace AppAppBar3
         }
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-           
+           //Edge = (edgeMonitor.SelectedItem as string);
             relocateWindowLocation();
             Debug.WriteLine("Edge Selection Changed********** "+ Edge);
            
