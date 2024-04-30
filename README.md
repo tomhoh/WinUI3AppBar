@@ -25,6 +25,7 @@ Because the included example docking window uses webview 2 you will also need to
 - Build into Library
 - Drop and drag
 - Bug fixes
+- watch for other appbars comming and going to automatically adjust.
 
 
 
