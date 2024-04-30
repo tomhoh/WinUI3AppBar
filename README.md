@@ -24,6 +24,7 @@ Because the included example docking window uses webview 2 you will also need to
 ## To do
 - Build into Library
 - Drop and drag
+- Bug fixes
 
 
 
