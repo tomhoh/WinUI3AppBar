@@ -33,6 +33,9 @@ namespace AppAppBar3
         [DllImport("user32.dll")]
         public static extern uint GetDpiForWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
         public enum MONITOR_DPI_TYPE
         {
             MDT_EFFECTIVE_DPI = 0,
@@ -76,6 +79,7 @@ namespace AppAppBar3
             public int right;
             public int bottom;
         }
+
         const uint SPI_GETWORKAREA = 0x0030;
         private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
         public static RECT GetWorkArea()
@@ -178,19 +182,21 @@ namespace AppAppBar3
                     Debug.WriteLine("monitor name " + mi.szDevice + " msent " + monitor +" "+mi.dwFlags.ToString());
                     if (mi.szDevice == monitor)
                     {
-                        
+
 
                         // Scale coordinates and size based on DPI
 
-
-                        var monitorRect = mi.rcWork;
+                        uint dpiX = 0;
+                        uint dpiY = 0;
+                        //GetDpiForMonitor(hMonitor, MONITOR_DPI_TYPE.MDT_RAW_DPI, out dpiX, out dpiY);
+                        var monitorRect = mi.rcMonitor;
                        //windowRect.left = (int)(monitorRect.left *dpiX/96.0f);
                         windowRect.left = monitorRect.left;
                         windowRect.top = monitorRect.top;
                         // windowRect.right = (int)(monitorRect.right *dpiY/96.0f);
                         windowRect.right = monitorRect.right;
                         windowRect.bottom = monitorRect.bottom;
-                        Debug.WriteLine("get Monitor Width*****" + windowRect.right);
+                        Debug.WriteLine("get Monitor Width*****" + (windowRect.right-100));
                         Debug.WriteLine("get Monitor Left*****" + windowRect.left);
                         Debug.WriteLine("get Monitor Top*****" + windowRect.top);
                         Debug.WriteLine("get Monitor Bottom*****" + windowRect.bottom);
@@ -203,6 +209,52 @@ namespace AppAppBar3
             }, IntPtr.Zero);
 
             return windowRect;
+        }
+
+        public static RECT getMonitorRECT(string monitor)
+        {
+            RECT windowRect = new RECT();
+
+            // int foundMonitors = -1;
+
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
+            {
+                Debug.WriteLine("monitor name ******** " + monitor);
+                MONITORINFOEX mi = new MONITORINFOEX();
+                mi.cbSize = Marshal.SizeOf(typeof(MONITORINFOEX));
+                if (GetMonitorInfo(hMonitor, ref mi))
+                {
+                    Debug.WriteLine("monitor name " + mi.szDevice + " msent " + monitor + " " + mi.dwFlags.ToString());
+                    if (mi.szDevice == monitor)
+                    {
+
+
+                        RECT monitorRect = mi.rcMonitor;
+                       // windowRect = mi.rcWork;
+                        windowRect = monitorRect;
+                        
+
+                        Debug.WriteLine("!!!!!!!!!Selected Monitor Rect*****" + monitorRect.ToString());
+                        //windowRect.left = (int)(monitorRect.left *dpiX/96.0f);
+                      /*  windowRect.left = monitorRect.left;
+                        windowRect.top = monitorRect.top;
+                    
+                        windowRect.right = monitorRect.right;
+                        windowRect.bottom = monitorRect.bottom;*/
+                        Debug.WriteLine("get Monitor right*****" + (windowRect.right-100));
+                        Debug.WriteLine("get Monitor Left*****" + windowRect.left);
+                        Debug.WriteLine("get Monitor Top*****" + windowRect.top);
+                        Debug.WriteLine("get Monitor Bottom*****" + windowRect.bottom);
+                        return false;
+                    }
+                }
+                // Stop enumeration
+
+                return true;
+            }, IntPtr.Zero);
+
+            return windowRect;
+            
         }
     }
 }
