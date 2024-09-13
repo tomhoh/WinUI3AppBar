@@ -342,10 +342,10 @@ namespace AppAppBar3
                     abd.rc.top = abd.rc.bottom - 100;
                      break;
              }
-          
-            // Pass the final bounding rectangle to the system. 
-            //remove corner radius by removing border and caption
-            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+            
+              // Pass the final bounding rectangle to the system. 
+              //remove corner radius by removing border and caption
+              IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
            // style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME ));
 
@@ -362,10 +362,11 @@ namespace AppAppBar3
             
            // Debug.WriteLine("Window width " + (int)((abd.rc.right - abd.rc.left) * dpiX / 96.0f));
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
-             // SizeInt32 size = new SizeInt32();
+            // SizeInt32 size = new SizeInt32();
             // size.Width = 100;
-            //size.Height = abd.rc.bottom - abd.rc.top;
+            //size.Height = abd.rc.bottom - abd.rc.top;;
             // appWindow.Resize(size);
+           
             MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
            // SetWindowPos(hWnd, (IntPtr)HWND_NOTOPMOST, 0, 0, 100, abd.rc.bottom - abd.rc.top, SWP_ASYNCWINDOWPOS);
            
