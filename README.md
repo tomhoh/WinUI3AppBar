@@ -9,7 +9,7 @@ Includes an example webview (webview2) window that is docked to the appbar when 
 - Windows App SDK
 - Windows App SDK (For VS 2022 C#) : https://aka.ms/windowsappsdk/stable-vsix-2022-cs or Windows App SDK (For VS 2019 C#) : https://aka.ms/windowsappsdk/stable-vsix-2019-cs
 - Webview2 Evergreen Runtime (https://developer.microsoft.com/en-us/microsoft-edge/webview2/?form=MA13LH) or simply remove (comment out) the webview from code 
--WinUIex.  : https://github.com/dotMorten/WinUIEx?tab=readme-ov-file
+- WinUIex.  : https://github.com/dotMorten/WinUIEx?tab=readme-ov-file
 
 You can find more information in here: https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/set-up-your-development-environment?tabs=vs-2022
 
