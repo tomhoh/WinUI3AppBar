@@ -21,12 +21,16 @@ Because the included example docking window uses webview 2 you will also need to
 - Allow docking to any side of the screen
 - Multiple monitor support
 - Handles per-monitor DPI scaling
+- Does not show in switcher
+- Excluded from aero peek
+- Follows current window desktop theme
 
 ## To do
 - Build into Library
 - Drop and drag
 - Bug fixes
 - watch for other appbars comming and going to automatically adjust.
+- allow for custom theme (currenlty only supports current desktop theme)
 
 
 
