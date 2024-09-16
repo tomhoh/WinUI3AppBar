@@ -16,6 +16,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using WinRT.Interop;
+using WinUIEx;
 
 
 // To learn more about WinUI, the WinUI project structure,
@@ -51,8 +52,6 @@ namespace AppAppBar3
             IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hwnd, GWL_STYLE, style);
-            uint dpiX, dpiY;
-            dpiX = dpiY = MonitorHelper.GetDpiForWindow(hwnd);
         }
         private async void InitializeWebView()
         {

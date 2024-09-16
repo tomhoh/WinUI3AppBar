@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <winex:WindowEx
     xmlns:winex="using:WinUIEx"
+    x:Name="appbarWindow"
     x:Class="AppAppBar3.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -8,10 +9,15 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    MinHeight="50"
-    MinWidth="50">
+    IsTitleBarVisible="False"
+    IsShownInSwitchers="False"
+    IsAlwaysOnTop="True"
+    MinHeight="25"
+    MinWidth="25">
 
-    <Grid Background="{ThemeResource SystemChromeMediumLowColor}">
+
+    <Page Background="{ThemeResource SystemChromeMediumLowColor}">
+        <Grid>
         <StackPanel x:Name="stPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
 
             <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow">
@@ -19,23 +25,24 @@
             </ToggleButton>
 
 
-            <ComboBox x:Name="edgeMonitor"  Margin="0,8,0,0"  SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="200" >
+            <ComboBox x:Name="edgeMonitor"  Margin="5,8,0,0"  SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="100" >
                 <x:String>Top</x:String>
                 <x:String>Bottom</x:String>
                 <x:String>Left</x:String>
                 <x:String>Right</x:String>
             </ComboBox>
-            <ComboBox x:Name="cbMonitor"  Margin="0,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200" >
+            <ComboBox x:Name="cbMonitor"  Margin="5,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200" >
 
             </ComboBox>
-            <Button Content="Close" Margin="80,0,0,0" Click="CloseButton_Click" />
-            <CommandBar HorizontalAlignment="Right">
+            <Button Content="Close" Margin="20,0,0,0" Click="CloseButton_Click" />
+            <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" >
                 <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
                 <AppBarButton Icon="DockRight" Label="Right"/>
                 <AppBarButton Icon="DockBottom" Label="Bottom"/>
             </CommandBar>
         </StackPanel>
-    </Grid>
+        </Grid>
+    </Page>
 
 
 
