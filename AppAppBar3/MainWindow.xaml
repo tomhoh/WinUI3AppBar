@@ -16,33 +16,35 @@
     MinWidth="25">
 
 
-    <Page Background="{ThemeResource SystemChromeMediumLowColor}">
-        <Grid>
-        <StackPanel x:Name="stPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+    <Grid Background="{ThemeResource SystemChromeMediumLowColor}" >
+        
+        <StackPanel x:Name="stPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal" >
+            <VariableSizedWrapGrid Orientation="Horizontal"  MaximumRowsOrColumns="120" ItemHeight="50" ItemWidth="100" x:Name="layoutFlexGrid" HorizontalChildrenAlignment="Left" >
 
-            <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow">
+                <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}">
 
-            </ToggleButton>
+                </ToggleButton>
 
 
-            <ComboBox x:Name="edgeMonitor"  Margin="5,8,0,0"  SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="100" >
-                <x:String>Top</x:String>
-                <x:String>Bottom</x:String>
-                <x:String>Left</x:String>
-                <x:String>Right</x:String>
-            </ComboBox>
-            <ComboBox x:Name="cbMonitor"  Margin="5,8,0,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="200" >
+                <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
+                    <x:String>Top</x:String>
+                    <x:String>Bottom</x:String>
+                    <x:String>Left</x:String>
+                    <x:String>Right</x:String>
+                </ComboBox>
+                <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
 
-            </ComboBox>
-            <Button Content="Close" Margin="20,0,0,0" Click="CloseButton_Click" />
-            <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" >
-                <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
-                <AppBarButton Icon="DockRight" Label="Right"/>
-                <AppBarButton Icon="DockBottom" Label="Bottom"/>
-            </CommandBar>
+                </ComboBox>
+                <Button Content="Close" Margin="0,0,0,0" Click="CloseButton_Click" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}"/>
+                <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" MinWidth="{Binding ItemWidth, ElementName=layoutFlexGrid}">
+                    <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
+                    <AppBarButton Icon="DockRight" Label="Right"/>
+                    <AppBarButton Icon="DockBottom" Label="Bottom"/>
+                </CommandBar>
+            </VariableSizedWrapGrid>
         </StackPanel>
-        </Grid>
-    </Page>
+        
+    </Grid>
 
 
 

@@ -9,10 +9,10 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
 
-    <Page Background="{ThemeResource SystemChromeMediumLowColor}">
-        <Grid>
+    <Grid Background="{ThemeResource SystemChromeMediumLowColor}">
+        
         <controls:WebView2 x:Name="webView"  Grid.Row="1" Grid.ColumnSpan="2"
         Source="https://www.microsoft.com" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-            </Grid>
-    </Page>
+           
+    </Grid>
 </Window>

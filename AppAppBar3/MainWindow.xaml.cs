@@ -53,12 +53,8 @@ namespace AppAppBar3
     {
         private String[] _MonItems;// = new String[10];
         private ObservableCollection<string> _MonitorList; 
-       // int theSelectedIndex = 0;
         string selectedItemsText;
-        //uint dpiX, dpiY;
-       // double scale;
         WindowMessageMonitor monitor; 
-        // RECT currentWorkarea;
 
 
         public ObservableCollection<string> MonitorList
@@ -107,12 +103,6 @@ namespace AppAppBar3
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-       // [DllImport("user32.dll")]
-       // static extern int GetSystemMetrics(int nIndex);
-
-       // const int SM_CXSCREEN = 0;  // Index for screen width in pixels
-       // const int SM_CYSCREEN = 1;  // Index for screen height in pixels
 
 
         public struct APPBARDATA
@@ -188,8 +178,6 @@ namespace AppAppBar3
         }
 
 
-       
-
         private AppWindow appWindow;
         public MainWindow()
         {
@@ -204,7 +192,6 @@ namespace AppAppBar3
         }
        
 
-
         public event PropertyChangedEventHandler PropertyChanged;
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -212,7 +199,6 @@ namespace AppAppBar3
             Debug.WriteLine("MonitorList changed*****" + propertyName);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-
 
        
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
@@ -261,12 +247,9 @@ namespace AppAppBar3
                 cbMonitor.SelectedIndex = 0;
 
             }
-           
 
         }
 
-
-       
 
        APPBARDATA abd;
 
@@ -283,6 +266,11 @@ namespace AppAppBar3
 
                 SHAppBarMessage((int)AppBarMessages.ABM_NEW, ref abd);
                 fBarRegistered = true;
+                //remove corner radius by removing border and caption, remove title bar, remove from zorder, do not activate
+                IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+                style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
+
+                SetWindowLong(hWnd, GWL_STYLE, style);
 
                 ABSetPos(edge,selectedMonitor);
             }
@@ -295,18 +283,19 @@ namespace AppAppBar3
         }
         private const int ABS_AUTOHIDE = 0x00000001;
         private const int ABS_ALWAYSONTOP = 0x00000002;
-      //  private const int HWND_TOPMOST = -1;
-      //  private const int HWND_NOTOPMOST = -2;
+        private const int HWND_TOPMOST = -1;
+        private const int HWND_NOTOPMOST = -2;
       //  private const int SWP_NOMOVE = 0x0002;
       //  private const int SWP_NOSIZE = 0x0001;
         const uint SWP_NOZORDER = 0x0004;
         const uint SWP_NOACTIVATE = 0x0010;
-        const uint WS_EX_TOOLWINDOW = 0x00000080;
-        const uint WS_VISIBLE = 0x10000000;
+        //const uint WS_EX_TOOLWINDOW = 0x00000080;
+       // const uint WS_VISIBLE = 0x10000000;
 
         public const int SWP_ASYNCWINDOWPOS = 0x4000;
         private void ABSetPos(ABEdge edge, string selectedMonitor)
         {
+           
             var hWnd = WindowNative.GetWindowHandle(this);
             abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
@@ -339,17 +328,11 @@ namespace AppAppBar3
                      break;
                  case (int)ABEdge.Top:
                      abd.rc.bottom = abd.rc.top + 100;
-                     break;
+                    break;
                  case (int)ABEdge.Bottom:
                     abd.rc.top = abd.rc.bottom - 100;
                      break;
              }
-            
-              //remove corner radius by removing border and caption
-              IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
-
-            SetWindowLong(hWnd, GWL_STYLE, style);
 
             // Pass the final bounding rectangle to the system. 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
@@ -360,15 +343,14 @@ namespace AppAppBar3
             
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
 
-            // Move and size the appbar so that it conforms to the 
-            // bounding rectangle passed to the system. 
-            
+            // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
             MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+             //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
             appWindow.Show();
-            // SetWindowPos(hWnd, (IntPtr)HWND_NOTOPMOST, 0, 0, 100, abd.rc.bottom - abd.rc.top, SWP_ASYNCWINDOWPOS);
-            // abd.lParam = new IntPtr(ABS_AUTOHIDE | ABS_ALWAYSONTOP);
-            //IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
-            //Debug.WriteLine("Appbar state " + state);
+
+            abd.lParam = new IntPtr(ABS_AUTOHIDE);
+            IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
+            Debug.WriteLine("Appbar state " + state);
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -389,32 +371,12 @@ namespace AppAppBar3
                         monitor.WindowMessageReceived -= OnWindowMessageReceived;
                         relocateWindowLocation();
                         monitor.WindowMessageReceived += OnWindowMessageReceived;
-                        /* switch (edgeMonitor.SelectedItem as string)
-                         {
-                             case "Left":
-                                 ABSetPos(ABEdge.Left, cbMonitor.SelectedItem as string);
-                                 break;
-                             case "Right":
-                                 ABSetPos(ABEdge.Right, cbMonitor.SelectedItem as string);
-                                 break;
-                             case "Top":
-                                 Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
-                                 ABSetPos(ABEdge.Top, cbMonitor.SelectedItem as string);
-                                 break;
-                             case "Bottom":
-                                 ABSetPos(ABEdge.Bottom, cbMonitor.SelectedItem as string);
-                                 break;
-                         }   */
 
                         break;
                 }
             }
 
         }
-
-      
-       
-
 
 
         private void OnClosed(object sender, WindowEventArgs args)
@@ -452,9 +414,6 @@ namespace AppAppBar3
             selectedItemsText = (cbMonitor.SelectedItem as String);
                
                 Debug.WriteLine("Selected Monitor Text**********" + (cbMonitor.SelectedItem as string));
-               
-
-
         }
 
         private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
@@ -513,8 +472,6 @@ namespace AppAppBar3
                 webWindow.Close();
                 webWindow = null;
             }
-            
-          
            
         }
 
@@ -563,7 +520,6 @@ namespace AppAppBar3
                 newWindowY = workarea.top;
             }
             webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
-           
             
         }
     }
