@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace AppAppBar3
@@ -16,10 +13,6 @@ namespace AppAppBar3
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
-         
-        //[DllImport("user32.dll")]
-        // static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref RECT pvParam, uint fWinIni);
-
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
@@ -43,8 +36,6 @@ namespace AppAppBar3
               public int dwFlags;
               [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
               public string szDevice;
-
-
           }
 
         // Define the RECT structure
@@ -59,13 +50,6 @@ namespace AppAppBar3
 
         const uint SPI_GETWORKAREA = 0x0030;
         private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
-       /* public static RECT GetWorkArea()
-        {
-            RECT rect = new RECT();
-            SystemParametersInfo(SPI_GETWORKAREA, 0, ref rect, 0);
-            
-            return rect;
-        }*/
         public static List<string> GetMonitors()
         {
             List<string> monitorNames = new List<string>();

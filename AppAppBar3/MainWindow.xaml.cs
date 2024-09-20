@@ -1,54 +1,30 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using System.Runtime.InteropServices;
 using WinRT.Interop;
-using Microsoft.Graphics.Display;
 using Microsoft.UI.Windowing;
 using Microsoft.UI;
-using System.Threading.Tasks;
-using Windows.Devices.Display;
-using Windows.Devices.Enumeration;
-using Windows.Graphics;
 using System.Diagnostics;
-using System.Threading;
 using System.Collections.ObjectModel;
-using System.Collections;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using Windows.UI.ViewManagement;
 using static AppAppBar3.MonitorHelper;
-using Windows.ApplicationModel.Core;
-using Windows.UI.Core;
-using Microsoft.Win32;
-using Microsoft.UI.Dispatching;
-using Windows.System;
 using WinUIEx.Messaging;
-using static AppAppBar3.MainWindow;
-using Microsoft.UI.Composition;
-using WinUIEx;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
+using Windows.Storage.FileProperties;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace AppAppBar3
 {
-    /// <summary>
-    /// An empty window that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
         private String[] _MonItems;// = new String[10];
@@ -183,7 +159,6 @@ namespace AppAppBar3
         {
             this.InitializeComponent();
             this.Activated += OnActivated;
-            this.Closed += OnClosed;
             this.AppWindow.IsShownInSwitchers = false;
 
             monitor = new WindowMessageMonitor(this);
@@ -245,6 +220,8 @@ namespace AppAppBar3
                 MonitorList = new ObservableCollection<string>(monitors);
                
                 cbMonitor.SelectedIndex = 0;
+                loadShortCuts();
+                
 
             }
 
@@ -347,10 +324,10 @@ namespace AppAppBar3
             MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
              //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
             appWindow.Show();
-
-            abd.lParam = new IntPtr(ABS_AUTOHIDE);
-            IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
-            Debug.WriteLine("Appbar state " + state);
+            /***********************Autohide not working******************************/
+            //abd.lParam = new IntPtr(ABS_AUTOHIDE);
+            //IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
+           // Debug.WriteLine("Appbar state " + state);
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -378,9 +355,150 @@ namespace AppAppBar3
 
         }
 
-
-        private void OnClosed(object sender, WindowEventArgs args)
+        private void Grid_DragOver(object sender, DragEventArgs e)
         {
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            Debug.WriteLine("Drag Over");
+            if (e.DragUIOverride != null)
+            {
+                e.DragUIOverride.Caption = "Add Shortcut";
+                e.DragUIOverride.IsContentVisible = true;
+            }
+           // stPanel.Background = new SolidColorBrush(Colors.DarkGray);
+           
+        }
+
+        private void DragLeave(object sender, DragEventArgs e)
+        {
+            
+           // stPanel.Background = null;
+        }
+        private async void loadShortCuts()
+        {
+            try
+            {
+                Debug.WriteLine("load short cuts");
+                var userDataLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                //var userDataLocal = @"C:\Users\tomho";
+
+                
+                using (StreamReader sr = new StreamReader(userDataLocal + @"\shortcuts.txt"))
+                    while (!sr.EndOfStream)
+                    {
+                        var exePath = sr.ReadLine();
+                        StorageFile file = await StorageFile.GetFileFromPathAsync(exePath);
+                        var path = exePath;
+                        Debug.WriteLine("path of shortcut readline " + exePath + " " + file.FileType);
+
+                            var iconThumbnail = await file.GetScaledImageAsThumbnailAsync(ThumbnailMode.SingleItem, 32);
+                            var bi = new BitmapImage();
+                            bi.DecodePixelHeight = 32;
+                            bi.DecodePixelWidth = 32;
+                            bi.SetSource(iconThumbnail);
+
+                            Image ButtonImageEL = new Image();
+                            ButtonImageEL.Source = bi;
+                            ButtonImageEL.Height = 32;
+                            ButtonImageEL.Width = 32;
+
+                            Button testIButton = new Button();
+                            testIButton.Background = new SolidColorBrush(Colors.Transparent);
+                            testIButton.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                            testIButton.Content = ButtonImageEL;
+                            testIButton.Click += Button_Click;
+                            testIButton.Tag = path;
+
+                            MenuFlyout menuFlyout = new MenuFlyout();
+                            MenuFlyoutItem menuFlyoutItem = new MenuFlyoutItem();
+                            menuFlyoutItem.Text = "Delete";
+                            menuFlyoutItem.Tag = testIButton.Tag;
+                            menuFlyoutItem.Click += MenuFlyoutItem_Click;
+                            menuFlyout.Items.Add(menuFlyoutItem);
+                            // FontIcon ItemIcon = new FontIcon();
+                            // ItemIcon.Glyph = "&#xE72D;";
+                            menuFlyoutItem.Icon = new SymbolIcon(Symbol.Delete);
+                            testIButton.ContextFlyout = menuFlyout;
+                            stPanel.Children.Add(testIButton);
+
+                            Debug.WriteLine("File info " + path);
+                        
+                    }
+            }
+            catch (Exception error)
+            {
+                Debug.WriteLine(error.Message);
+            }
+        }
+        private async void Grid_Drop(object sender, DragEventArgs e)
+        {
+           // stPanel.Background = null;
+            Debug.WriteLine("Dropped");
+            if (e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                IReadOnlyList<IStorageItem> files = await e.DataView.GetStorageItemsAsync();
+                StorageFile file = files.First() as StorageFile;
+                
+
+                var name = file.Name;
+                var path = file.Path;
+                var type = file.FileType;
+
+                Debug.WriteLine("File Type = " + type);
+                if (type == ".lnk")
+                {
+                    IWshRuntimeLibrary.IWshShell wsh = new IWshRuntimeLibrary.WshShellClass();
+                    IWshRuntimeLibrary.IWshShortcut sc = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(path);
+                    path = sc.TargetPath;
+                }
+                var iconThumbnail = await file.GetScaledImageAsThumbnailAsync(ThumbnailMode.SingleItem, 32);
+                var bi = new BitmapImage();
+                bi.DecodePixelHeight = 32;
+                bi.DecodePixelWidth = 32;
+                bi.SetSource(iconThumbnail);
+               
+                Image ButtonImageEL = new Image();
+                ButtonImageEL.Source = bi;
+                ButtonImageEL.Height = 32;
+                ButtonImageEL.Width = 32;
+
+                Button testIButton = new Button();
+                testIButton.Background = new SolidColorBrush(Colors.Transparent);
+                testIButton.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                testIButton.Content = ButtonImageEL;
+                testIButton.Click += Button_Click;
+                testIButton.Tag = path;
+                
+                MenuFlyout menuFlyout = new MenuFlyout();
+                MenuFlyoutItem menuFlyoutItem = new MenuFlyoutItem();
+                menuFlyoutItem.Text = "Delete";
+                menuFlyoutItem.Tag = testIButton.Tag;
+                menuFlyoutItem.Click += MenuFlyoutItem_Click;
+                menuFlyout.Items.Add(menuFlyoutItem);
+                // FontIcon ItemIcon = new FontIcon();
+                // ItemIcon.Glyph = "&#xE72D;";
+                menuFlyoutItem.Icon = new SymbolIcon(Symbol.Delete);
+                testIButton.ContextFlyout = menuFlyout;
+                stPanel.Children.Add(testIButton);
+
+                Debug.WriteLine("File info " + name + " " + path);
+
+                try
+                {
+                    // Create a file that the application will store user specific shortcut data in.
+                     var userDataLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    using (StreamWriter sw = System.IO.File.AppendText(userDataLocal + @"\shortcuts.txt"))
+                        sw.WriteLine(path);
+                    Debug.WriteLine(userDataLocal.ToString());
+                }
+                catch (IOException error)
+                {
+                    // Inform the user that an error occurred.
+                    Debug.WriteLine("An error occurred while attempting to show the application." +
+                                    "The error is:" + error.ToString());
+
+                }
+               
+            }
         }
 
         private void UnregisterAppBar()
@@ -390,10 +508,47 @@ namespace AppAppBar3
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
+            Debug.WriteLine("Clicked on Image " + ((Control)sender).Tag.ToString());
+            try
+            {
+                Process.Start(((Control)sender).Tag.ToString());
+            }
+            catch (Exception error)
+            {
+                Debug.WriteLine("Error " + error);
+            }
+            
+           
+        }
+        private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine("Button Delete Clicked");
+            var userDataLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            System.IO.File.Delete(userDataLocal + @"\shortcuts.txt");
+            foreach (var item in stPanel.Children)
+            {
+                if(item.GetType() == typeof(Button))
+                {
+                    if (((Button)item).Tag == ((MenuFlyoutItem)sender).Tag)
+                    {
+                        
+                        stPanel.Children.Remove(item);
+                    }
+                    else
+                    {
+                        using (StreamWriter sa = System.IO.File.AppendText(userDataLocal + @"\shortcuts.txt"))
+                            sa.WriteLine(((Button)item).Tag.ToString());
+                    }
+                }
+              
+            }           
 
         }
+       
+                
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             if(webWindow != null)
             {
@@ -416,10 +571,7 @@ namespace AppAppBar3
                 Debug.WriteLine("Selected Monitor Text**********" + (cbMonitor.SelectedItem as string));
         }
 
-        private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
+       
 
         private void relocateWindowLocation()
         {
@@ -521,6 +673,11 @@ namespace AppAppBar3
             }
             webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
             
+        }
+
+        private void ImageTest_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+
         }
     }
 }
