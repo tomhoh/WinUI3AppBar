@@ -20,6 +20,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Microsoft.UI.Xaml.Media.Imaging;
+using WinUIEx;
 
 
 
@@ -248,8 +249,9 @@ namespace AppAppBar3
                 style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
 
                 SetWindowLong(hWnd, GWL_STYLE, style);
-
+                SHAppBarMessage((int)AppBarMessages.ABM_ACTIVATE, ref abd);
                 ABSetPos(edge,selectedMonitor);
+                
             }
             else
             {
@@ -258,8 +260,8 @@ namespace AppAppBar3
                 fBarRegistered = false;
             }
         }
-        private const int ABS_AUTOHIDE = 0x00000001;
-        private const int ABS_ALWAYSONTOP = 0x00000002;
+        private const int ABS_AUTOHIDE = 0x1;
+        private const int ABS_ALWAYSONTOP = 0x2;
         private const int HWND_TOPMOST = -1;
         private const int HWND_NOTOPMOST = -2;
       //  private const int SWP_NOMOVE = 0x0002;
@@ -312,6 +314,12 @@ namespace AppAppBar3
              }
 
             // Pass the final bounding rectangle to the system. 
+            /***********************Autohide not working******************************/
+          //  abd.lParam = ABS_ALWAYSONTOP;
+           // abd.lParam = (IntPtr)ABS_AUTOHIDE;
+           // IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
+            
+           // Debug.WriteLine("Appbar state " + state);
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
             Debug.WriteLine("abd right "+abd.rc.right);
             Debug.WriteLine("abd Left " + abd.rc.left);
@@ -324,10 +332,8 @@ namespace AppAppBar3
             MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
              //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
             appWindow.Show();
-            /***********************Autohide not working******************************/
-            //abd.lParam = new IntPtr(ABS_AUTOHIDE);
-            //IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
-           // Debug.WriteLine("Appbar state " + state);
+            
+            
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -474,6 +480,7 @@ namespace AppAppBar3
                 menuFlyoutItem.Tag = testIButton.Tag;
                 menuFlyoutItem.Click += MenuFlyoutItem_Click;
                 menuFlyout.Items.Add(menuFlyoutItem);
+
                 // FontIcon ItemIcon = new FontIcon();
                 // ItemIcon.Glyph = "&#xE72D;";
                 menuFlyoutItem.Icon = new SymbolIcon(Symbol.Delete);
@@ -558,6 +565,21 @@ namespace AppAppBar3
             UnregisterAppBar();
             this.Close();
         }
+        Settings settingsWindow;
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            if (settingsWindow == null)
+            {
+                settingsWindow = new Settings(MonitorList);
+                settingsWindow.Activate();
+                DockToAppBar(settingsWindow);
+            }
+            else
+            {
+                settingsWindow.Close();
+                settingsWindow = null;
+            }
+        }
 
         private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -627,13 +649,13 @@ namespace AppAppBar3
            
         }
 
-        void DockToAppBar(WebWindow webW)
+        void DockToAppBar(Window webW)
         {
+            //IntPtr whWnd = WindowNative.GetWindowHandle(webW);
+            // WindowId windowId = Win32Interop.GetWindowIdFromWindow(whWnd);
+            // var wappWindow = AppWindow.GetFromWindowId(windowId);
+            var wappWindow = webW.GetAppWindow();
             
-           // var windowBounds = webW.Bounds;
-           var taskbarRect = this.Bounds;
-           //var workarea = MonitorHelper.GetWorkArea();
-
             int newWindowWidth = 0;// = screenWidth;
             int newWindowHeight =0;// = screenHeight - 100;
             int newWindowX=0;//= (int)(taskbarRect.X);
@@ -643,41 +665,65 @@ namespace AppAppBar3
 
             if (Edge == "Top")
             {
-                newWindowWidth = workarea.right;
+                newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
                 newWindowX = workarea.left;
                 newWindowY = workarea.top ;
+                if (wappWindow.Title == "Settings")
+                {
+                    newWindowWidth = wappWindow.Size.Width;
+                    newWindowHeight = wappWindow.Size.Height;
+                    newWindowX = (int)((appWindow.Size.Width / 2) - (wappWindow.Size.Width / 2));
+                }
 
             }
             else if (Edge == "Bottom")
             {
-                newWindowWidth = workarea.right;
+                newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
                 newWindowX = workarea.left;
                 newWindowY = workarea.top;
+                if (wappWindow.Title == "Settings")
+                {
+                    newWindowWidth = wappWindow.Size.Width;
+                    newWindowHeight = wappWindow.Size.Height;
+                    newWindowX = (int)((appWindow.Size.Width / 2) - (wappWindow.Size.Width / 2));
+                }
             }
             else if (Edge == "Left")
             {
-                newWindowWidth = (workarea.right - workarea.left );
+                newWindowWidth = workarea.right - workarea.left ;
                 newWindowHeight = workarea.bottom;
                 newWindowX = workarea.left;
                 newWindowY = workarea.top;
+                if (wappWindow.Title == "Settings")
+                {
+                    newWindowWidth = wappWindow.Size.Width;
+                    newWindowHeight = wappWindow.Size.Height;
+                    newWindowY = (int)((appWindow.Size.Height / 2) - (wappWindow.Size.Height / 2));
+                }
 
             }
             else if (Edge == "Right")
             {
-                newWindowWidth = (workarea.right - workarea.left);
+                newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
                 newWindowX = workarea.left;
                 newWindowY = workarea.top;
+                if (wappWindow.Title == "Settings")
+                {
+                    newWindowWidth = wappWindow.Size.Width;
+                    newWindowHeight = wappWindow.Size.Height;
+                    newWindowY = (int)((appWindow.Size.Height / 2) - (wappWindow.Size.Height / 2));
+                }
             }
+         
+
+
             webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
             
         }
 
-        private void ImageTest_PointerPressed(object sender, PointerRoutedEventArgs e)
-        {
-
-        }
+       
     }
 }

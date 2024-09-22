@@ -23,6 +23,7 @@
     <AssemblyName>AppAppBar3</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Settings.xaml" />
     <None Remove="WebWindow.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -63,6 +64,11 @@
   -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Settings.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="WebWindow.xaml">

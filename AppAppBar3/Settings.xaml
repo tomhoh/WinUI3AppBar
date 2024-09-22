@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<winex:WindowEx
+    xmlns:winex="using:WinUIEx"
+     x:Name="settingsWindow"
+ x:Class="AppAppBar3.Settings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AppAppBar3"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Settings"
+    Height="600"
+    Width="400">
+
+    <Grid Background="{ThemeResource SystemChromeMediumLowColor}">
+        <StackPanel HorizontalAlignment="Stretch">
+            <Button>
+                <Button.Content>
+                    <FontIcon Glyph="&#xE75A;"/>
+                </Button.Content>
+                <Button.Flyout>
+                    <MenuFlyout Placement="RightEdgeAlignedTop">
+                        <MenuFlyoutItem Text="Top" Icon="DockLeft"></MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Bottom" Icon="DockBottom"></MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Left" Icon="DockLeft"></MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Right" Icon="DockRight"></MenuFlyoutItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+            <ComboBox x:Name="cbMonitorSettings"     PlaceholderText="Pick Screen" Width="200" MinWidth="200">
+            </ComboBox>
+
+        </StackPanel>
+        
+
+    </Grid>
+</winex:WindowEx>
