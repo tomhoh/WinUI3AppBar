@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 
 namespace AppAppBar3
@@ -50,7 +52,7 @@ namespace AppAppBar3
 
         const uint SPI_GETWORKAREA = 0x0030;
         private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
-        public static List<string> GetMonitors()
+        public static ObservableCollection<string> GetMonitors()
         {
             List<string> monitorNames = new List<string>();
             MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
@@ -67,7 +69,9 @@ namespace AppAppBar3
             };
 
             EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-            return monitorNames;
+            ObservableCollection<string> oList = new ObservableCollection<string>(monitorNames);
+            
+            return oList;
         }
        /* const uint SWP_NOZORDER = 0x0004;
         const uint SWP_NOACTIVATE = 0x0010;

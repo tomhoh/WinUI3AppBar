@@ -21,6 +21,7 @@ using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
+using System.Text.RegularExpressions;
 
 
 
@@ -29,7 +30,7 @@ namespace AppAppBar3
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
         private String[] _MonItems;// = new String[10];
-        private ObservableCollection<string> _MonitorList; 
+        private ObservableCollection<string> _MonitorList = MonitorHelper.GetMonitors(); 
         string selectedItemsText;
         WindowMessageMonitor monitor; 
 
@@ -211,14 +212,14 @@ namespace AppAppBar3
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
                 }
-                monitors = MonitorHelper.GetMonitors();
+               // MonitorList = MonitorHelper.GetMonitors();
              
-                foreach (var monitor in monitors)
-                {
-                    Debug.WriteLine(monitor);
-                }
+               // foreach (var monitor in monitors)
+                //{
+                   // Debug.WriteLine(monitor);
+                //}
                 
-                MonitorList = new ObservableCollection<string>(monitors);
+                //MonitorList = new ObservableCollection<string>(monitors);
                
                 cbMonitor.SelectedIndex = 0;
                 loadShortCuts();
@@ -340,8 +341,8 @@ namespace AppAppBar3
 
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
-            //Debug.WriteLine("*************Message receieved********** " + e.Message.ToString());
-
+            Debug.WriteLine("*************Message receieved********** " + e.Message.ToString());
+            const int WM_DISPLAYCHANGE = 7;
 
             if (e.Message.MessageId == uCallBack)
             {
@@ -350,14 +351,28 @@ namespace AppAppBar3
                 {
                      
                     case (int)ABNotify.ABN_POSCHANGED:
-                        Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
-                        monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                        relocateWindowLocation();
-                        monitor.WindowMessageReceived += OnWindowMessageReceived;
+                       // Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
+                       // monitor.WindowMessageReceived -= OnWindowMessageReceived;
+                       // relocateWindowLocation();
+                       // monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                         break;
+                   
                 }
             }
+            switch (e.Message.WParam)
+            {
+                case WM_DISPLAYCHANGE:
+                    Debug.WriteLine("Monitor attached ");
+                   // _MonitorList= MonitorHelper.GetMonitors();
+                   // foreach(string mon in _MLIst)
+                   // {
+                       // _MonitorList.Add(mon);
+                   // }
+                    break;
+           }
+
+
 
         }
 
@@ -578,6 +593,33 @@ namespace AppAppBar3
             {
                 settingsWindow.Close();
                 settingsWindow = null;
+            }
+        }
+
+        private void DetectWindow_click(object sender, RoutedEventArgs e)
+        {
+            int newWindowWidth = 0;// = screenWidth;
+            int newWindowHeight = 0;// = screenHeight - 100;
+            int newWindowX = 0;//= (int)(taskbarRect.X);
+            int newWindowY = 0;//= 100;
+            foreach (var mon in _MonitorList)
+            {
+                var displayNumString = Regex.Match(mon, @"\d+").Value;
+                var workarea = getMonitorWorkRect(mon);
+
+               // WindowDetect windowDetect = new WindowDetect(displayNumString);
+                var wappWindow = new WindowDetect(displayNumString).GetAppWindow();
+
+                newWindowWidth = wappWindow.Size.Width;
+                newWindowHeight = wappWindow.Size.Height;
+                newWindowX = workarea.right - wappWindow.Size.Width - 50;
+                newWindowY = workarea.bottom - (wappWindow.Size.Height + 50);
+                wappWindow.Show();
+                //windowDetect.Show
+                
+                wappWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
+                
+
             }
         }
 

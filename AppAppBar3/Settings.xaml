@@ -10,14 +10,15 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="Settings"
-    Height="600"
-    Width="400">
+    Height="400"
+    Width="300"
+    IsShownInSwitchers="False">
 
-    <Grid Background="{ThemeResource SystemChromeMediumLowColor}">
-        <StackPanel HorizontalAlignment="Stretch">
+    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
+        
             <Button>
-                <Button.Content>
-                    <FontIcon Glyph="&#xE75A;"/>
+            <Button.Content>
+                <FontIcon Glyph="&#xE75A;"/>
                 </Button.Content>
                 <Button.Flyout>
                     <MenuFlyout Placement="RightEdgeAlignedTop">
@@ -31,8 +32,5 @@
             <ComboBox x:Name="cbMonitorSettings"     PlaceholderText="Pick Screen" Width="200" MinWidth="200">
             </ComboBox>
 
-        </StackPanel>
-        
-
-    </Grid>
+    </StackPanel>
 </winex:WindowEx>

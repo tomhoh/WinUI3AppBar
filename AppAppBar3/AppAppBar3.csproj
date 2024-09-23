@@ -25,6 +25,7 @@
   <ItemGroup>
     <None Remove="Settings.xaml" />
     <None Remove="WebWindow.xaml" />
+    <None Remove="WindowDetect.xaml" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="IWshRuntimeLibrary">
@@ -64,6 +65,11 @@
   -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="WindowDetect.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Settings.xaml">

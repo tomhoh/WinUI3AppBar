@@ -16,8 +16,7 @@
     MinWidth="25">
 
 
-
-        <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
+    <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
         
             <VariableSizedWrapGrid Orientation="Horizontal"  x:Name="VariableGrid" AllowDrop="False" DragOver="Grid_DragOver" Drop="Grid_Drop" CanDrag="True" MaximumRowsOrColumns="120" ItemHeight="50" ItemWidth="100" HorizontalAlignment="Left" HorizontalChildrenAlignment="Left" >
 
@@ -41,7 +40,7 @@
                     <AppBarButton Icon="DockRight" Label="Right"/>
                     <AppBarButton Icon="DockBottom" Label="Bottom"/>
                 <AppBarButton Icon="DockLeft" Label="Left"/>
-                <AppBarButton  Label="Detect Monitor" >
+                <AppBarButton  Label="Detect Monitor" Click="DetectWindow_click">
                     <AppBarButton.Icon>
                         <FontIcon Glyph="&#xE7F4;"/>
                     </AppBarButton.Icon>
