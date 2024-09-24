@@ -22,6 +22,7 @@ using Windows.Storage.FileProperties;
 using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
 using System.Text.RegularExpressions;
+using System.Collections;
 
 
 
@@ -30,7 +31,7 @@ namespace AppAppBar3
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
         private String[] _MonItems;// = new String[10];
-        private ObservableCollection<string> _MonitorList = MonitorHelper.GetMonitors(); 
+        private ObservableCollection<string> _MonitorList; 
         string selectedItemsText;
         WindowMessageMonitor monitor; 
 
@@ -105,7 +106,8 @@ namespace AppAppBar3
             ABM_ACTIVATE,
             ABM_GETAUTOHIDEBAR,
             ABM_SETAUTOHIDEBAR ,
-            ABM_WINDOWPOSCHANGED ,
+            ABM_WINDOWPOSCHANGED =0x0047,
+            ABM_WINDOWPOSCHANGING = 0x0046,
             ABM_SETSTATE
         }
         enum ABNotify : int
@@ -212,14 +214,14 @@ namespace AppAppBar3
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
                 }
-               // MonitorList = MonitorHelper.GetMonitors();
-             
-               // foreach (var monitor in monitors)
-                //{
-                   // Debug.WriteLine(monitor);
-                //}
+                monitors = MonitorHelper.GetMonitors();
+               // Debug.WriteLine(monitor);
+                foreach (var monitor in monitors)
+                {
+                    Debug.WriteLine(monitor);
+                }
                 
-                //MonitorList = new ObservableCollection<string>(monitors);
+                MonitorList = new ObservableCollection<string>(monitors);
                
                 cbMonitor.SelectedIndex = 0;
                 loadShortCuts();
@@ -283,7 +285,7 @@ namespace AppAppBar3
             abd.uEdge = (int)edge;
             
             var wrc = MonitorHelper.getMonitorRECT(selectedMonitor);
-            
+            Debug.WriteLine("wrc right " + wrc.right);
             abd.rc.top = wrc.top;
               abd.rc.bottom = wrc.bottom;
               abd.rc.left = wrc.left;
@@ -328,10 +330,12 @@ namespace AppAppBar3
             Debug.WriteLine("abd bottom " + abd.rc.bottom);
             
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
-
+            //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
             // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
             MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-             //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
+           // MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+
+            //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
             appWindow.Show();
             
             
@@ -346,31 +350,56 @@ namespace AppAppBar3
 
             if (e.Message.MessageId == uCallBack)
             {
-               // Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
+                Debug.WriteLine("**!!*****Message Main Window receieved in callback**!!**** " + e.Message.ToString() +" "+e.Message.MessageId.ToString());
                 switch (e.Message.WParam)
                 {
                      
-                    case (int)ABNotify.ABN_POSCHANGED:
-                       // Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
-                       // monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                       // relocateWindowLocation();
-                       // monitor.WindowMessageReceived += OnWindowMessageReceived;
+                    case (int)ABNotify.ABN_POSCHANGED: //arries when bar changes to different monitor
+                        Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
+                      //  monitor.WindowMessageReceived -= OnWindowMessageReceived;
+                      relocateWindowLocation();
+                      //  monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                         break;
                    
+
+
                 }
             }
+            switch (e.Message.MessageId)
+            {
+                case (int)AppBarMessages.ABM_WINDOWPOSCHANGED:
+                    Debug.WriteLine("window changed position changed notification " + e.Message.ToString());
+                    SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+                    break;
+            }
+
             switch (e.Message.WParam)
             {
+                
                 case WM_DISPLAYCHANGE:
+                    monitor.WindowMessageReceived -= OnWindowMessageReceived;
+                    var seletedMon = (cbMonitor.SelectedItem as String);
+
                     Debug.WriteLine("Monitor attached ");
-                   // _MonitorList= MonitorHelper.GetMonitors();
-                   // foreach(string mon in _MLIst)
-                   // {
-                       // _MonitorList.Add(mon);
-                   // }
+                    var list1 = MonitorHelper.GetMonitors();
+                    cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
+                    list1.Sort();
+                    MonitorList = null;
+                    MonitorList = new ObservableCollection<string>(list1);
+                   
+
+                    cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
+
+                    cbMonitor.SelectedItem = seletedMon;
+                        
+
+
+                    monitor.WindowMessageReceived += OnWindowMessageReceived;
+
                     break;
-           }
+              
+            }
 
 
 
@@ -585,7 +614,7 @@ namespace AppAppBar3
         {
             if (settingsWindow == null)
             {
-                settingsWindow = new Settings(MonitorList);
+                settingsWindow = new Settings(MonitorList,uCallBack);
                 settingsWindow.Activate();
                 DockToAppBar(settingsWindow);
             }

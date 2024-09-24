@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -52,7 +54,7 @@ namespace AppAppBar3
 
         const uint SPI_GETWORKAREA = 0x0030;
         private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
-        public static ObservableCollection<string> GetMonitors()
+        public static List<string> GetMonitors()
         {
             List<string> monitorNames = new List<string>();
             MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
@@ -63,15 +65,21 @@ namespace AppAppBar3
                 if (success)
                 {
                     monitorNames.Add(mi.szDevice);
-                    
+
                 }
+                else
+                {
+                    throw new Win32Exception();
+                }
+
+                monitorNames.Sort();
                 return true; // Continue enumeration
             };
 
             EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-            ObservableCollection<string> oList = new ObservableCollection<string>(monitorNames);
+           // ObservableCollection<string> oList = new ObservableCollection<string>(monitorNames);
             
-            return oList;
+            return monitorNames;
         }
        /* const uint SWP_NOZORDER = 0x0004;
         const uint SWP_NOACTIVATE = 0x0010;
@@ -178,7 +186,7 @@ namespace AppAppBar3
                     
                         windowRect.right = monitorRect.right;
                         windowRect.bottom = monitorRect.bottom;*/
-                        Debug.WriteLine("get Monitor right*****" + (windowRect.right-100));
+                        Debug.WriteLine("get Monitor right*****" + (windowRect.right));
                         Debug.WriteLine("get Monitor Left*****" + windowRect.left);
                         Debug.WriteLine("get Monitor Top*****" + windowRect.top);
                         Debug.WriteLine("get Monitor Bottom*****" + windowRect.bottom);
