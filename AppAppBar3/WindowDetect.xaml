@@ -13,8 +13,8 @@
     Height="200"
     Width="100"
     >
-    
-    <Grid  HorizontalAlignment="Stretch" >
+
+    <Grid  Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" >
         <TextBlock x:Name="DisplayText"  Margin="20,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="80" HorizontalTextAlignment="Center"/>
     </Grid>
 </winex:WindowEx>

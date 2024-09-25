@@ -14,7 +14,7 @@
     Width="300"
     IsShownInSwitchers="False">
 
-    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
+    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" Height="400" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
         
             <Button>
             <Button.Content>

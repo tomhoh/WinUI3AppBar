@@ -13,7 +13,8 @@
     IsShownInSwitchers="False"
     IsAlwaysOnTop="True"
     MinHeight="25"
-    MinWidth="25">
+    MinWidth="25"
+    Closed="appbarWindow_Closed">
 
 
     <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
@@ -40,7 +41,7 @@
                     <AppBarButton Icon="DockRight" Label="Right"/>
                     <AppBarButton Icon="DockBottom" Label="Bottom"/>
                 <AppBarButton Icon="DockLeft" Label="Left"/>
-                <AppBarButton  Label="Detect Monitor" Click="DetectWindow_click">
+                <AppBarButton  Label="Identify Monitor" Click="DetectWindow_click">
                     <AppBarButton.Icon>
                         <FontIcon Glyph="&#xE7F4;"/>
                     </AppBarButton.Icon>

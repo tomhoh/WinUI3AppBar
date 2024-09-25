@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
@@ -14,7 +13,6 @@ using System.Diagnostics;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using static AppAppBar3.MonitorHelper;
 using WinUIEx.Messaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -22,16 +20,20 @@ using Windows.Storage.FileProperties;
 using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
 using System.Text.RegularExpressions;
-using System.Collections;
+using System.Threading.Tasks;
 
 
 
 namespace AppAppBar3
 {
+    using static NativeMethods;
+    using static MonitorHelper;
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
-        private String[] _MonItems;// = new String[10];
+
+        private String[] _MonItems;
         private ObservableCollection<string> _MonitorList; 
+        
         string selectedItemsText;
         WindowMessageMonitor monitor; 
 
@@ -43,6 +45,17 @@ namespace AppAppBar3
             {
                 _MonitorList = value;
                 OnPropertyChanged();
+            }
+        }
+
+        private List<Window> _OpenWindows = new List<Window>();
+        public List<Window> OpenWindows
+        {
+            get => _OpenWindows;
+            set
+            {
+                _OpenWindows = value;
+               // OnPropertyChanged();
             }
         }
 
@@ -59,105 +72,9 @@ namespace AppAppBar3
         }
         public string[] MonItems() { return _MonItems; }
         private bool fBarRegistered = false;
-        public List<string> monitors; 
+        public List<string> monitors;
 
-        [DllImport("shell32.dll", SetLastError = true)]
-        public static extern IntPtr SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
-        public const int GWL_STYLE = -16;
-        public const int WS_CAPTION = 0x00C00000;
-        public const int WS_THICKFRAME = 0x00040000;
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetWindowLong(IntPtr hWnd, int nIndex);
-
-        [DllImport("user32.dll")]
-        public static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-         [DllImport("User32.dll", CharSet=CharSet.Auto)]
-        private static extern int RegisterWindowMessage(string msg);
         private int uCallBack;
-
-        [DllImport("User32.dll", ExactSpelling = true, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-        private static extern bool MoveWindow(IntPtr hWnd, int x, int y, int cx, int cy, bool repaint);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-
-        public struct APPBARDATA
-        {
-            public int cbSize;
-            public IntPtr hWnd;
-            public int uCallbackMessage;
-            public int uEdge;
-            public RECT rc;
-            public IntPtr lParam;
-        }
-       
-        //data structure for setting autohide or show on taskbar
-        enum AppBarMessages : int
-        {
-            ABM_NEW = 0,
-            ABM_REMOVE,
-            ABM_QUERYPOS,
-            ABM_SETPOS,
-            ABM_GETSTATE,
-            ABM_GETTASKBARPOS ,
-            ABM_ACTIVATE,
-            ABM_GETAUTOHIDEBAR,
-            ABM_SETAUTOHIDEBAR ,
-            ABM_WINDOWPOSCHANGED =0x0047,
-            ABM_WINDOWPOSCHANGING = 0x0046,
-            ABM_SETSTATE
-        }
-        enum ABNotify : int
-        {
-            ABN_STATECHANGE = 0,
-            ABN_POSCHANGED,
-            ABN_FULLSCREENAPP,
-            ABN_WINDOWARRANGE
-        }
-
-        public enum ABEdge : int
-        {
-            Left = 0,
-            Top = 1,
-            Right = 2,
-            Bottom = 3
-        }
-        public struct RECT
-        {
-            public int left;
-            public int top;
-            public int right;
-            public int bottom;
-        }
-
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmSetWindowAttribute(IntPtr hwnd, DwmWindowAttribute dwAttribute, ref int pvAttribute, int cbAttribute);
-
-        [Flags]
-        public enum DwmWindowAttribute : uint
-        {
-            DWMWA_NCRENDERING_ENABLED = 1,
-            DWMWA_NCRENDERING_POLICY,
-            DWMWA_TRANSITIONS_FORCEDISABLED,
-            DWMWA_ALLOW_NCPAINT,
-            DWMWA_CAPTION_BUTTON_BOUNDS,
-            DWMWA_NONCLIENT_RTL_LAYOUT,
-            DWMWA_FORCE_ICONIC_REPRESENTATION,
-            DWMWA_FLIP3D_POLICY,
-            DWMWA_EXTENDED_FRAME_BOUNDS,
-            DWMWA_HAS_ICONIC_BITMAP,
-            DWMWA_DISALLOW_PEEK,
-            DWMWA_EXCLUDED_FROM_PEEK,
-            DWMWA_CLOAK,
-            DWMWA_CLOAKED,
-            DWMWA_FREEZE_REPRESENTATION,
-            DWMWA_LAST
-        }
-
-
         private AppWindow appWindow;
         public MainWindow()
         {
@@ -198,11 +115,6 @@ namespace AppAppBar3
                 //remove from aero peek
                     int value = 0x01;
                     int hr = DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_EXCLUDED_FROM_PEEK, ref value, Marshal.SizeOf(typeof(int)));
-                
-
-                // Eventhough we removed the title bar with win32 api, we still need to set the title bar properties to make the content
-                // move into window title area
-                //// appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
 
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
@@ -225,12 +137,9 @@ namespace AppAppBar3
                
                 cbMonitor.SelectedIndex = 0;
                 loadShortCuts();
-                
-
             }
 
         }
-
 
        APPBARDATA abd;
 
@@ -337,12 +246,11 @@ namespace AppAppBar3
 
             //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
             appWindow.Show();
-            
-            
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
 
+        /******************* OnWindowMessageReceived is WndProc****************/
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
             Debug.WriteLine("*************Message receieved********** " + e.Message.ToString());
@@ -361,8 +269,6 @@ namespace AppAppBar3
                       //  monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                         break;
-                   
-
 
                 }
             }
@@ -387,22 +293,15 @@ namespace AppAppBar3
                     list1.Sort();
                     MonitorList = null;
                     MonitorList = new ObservableCollection<string>(list1);
-                   
 
                     cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
 
                     cbMonitor.SelectedItem = seletedMon;
-                        
-
 
                     monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                     break;
-              
             }
-
-
-
         }
 
         private void Grid_DragOver(object sender, DragEventArgs e)
@@ -414,64 +313,25 @@ namespace AppAppBar3
                 e.DragUIOverride.Caption = "Add Shortcut";
                 e.DragUIOverride.IsContentVisible = true;
             }
-           // stPanel.Background = new SolidColorBrush(Colors.DarkGray);
            
         }
 
         private void DragLeave(object sender, DragEventArgs e)
         {
-            
-           // stPanel.Background = null;
         }
+
+#region shortcuts
         private async void loadShortCuts()
         {
             try
             {
-                Debug.WriteLine("load short cuts");
-                var userDataLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                //var userDataLocal = @"C:\Users\tomho";
-
-                
-                using (StreamReader sr = new StreamReader(userDataLocal + @"\shortcuts.txt"))
+                using (StreamReader sr = new StreamReader(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt"))
                     while (!sr.EndOfStream)
                     {
                         var exePath = sr.ReadLine();
                         StorageFile file = await StorageFile.GetFileFromPathAsync(exePath);
-                        var path = exePath;
                         Debug.WriteLine("path of shortcut readline " + exePath + " " + file.FileType);
-
-                            var iconThumbnail = await file.GetScaledImageAsThumbnailAsync(ThumbnailMode.SingleItem, 32);
-                            var bi = new BitmapImage();
-                            bi.DecodePixelHeight = 32;
-                            bi.DecodePixelWidth = 32;
-                            bi.SetSource(iconThumbnail);
-
-                            Image ButtonImageEL = new Image();
-                            ButtonImageEL.Source = bi;
-                            ButtonImageEL.Height = 32;
-                            ButtonImageEL.Width = 32;
-
-                            Button testIButton = new Button();
-                            testIButton.Background = new SolidColorBrush(Colors.Transparent);
-                            testIButton.BorderBrush = new SolidColorBrush(Colors.Transparent);
-                            testIButton.Content = ButtonImageEL;
-                            testIButton.Click += Button_Click;
-                            testIButton.Tag = path;
-
-                            MenuFlyout menuFlyout = new MenuFlyout();
-                            MenuFlyoutItem menuFlyoutItem = new MenuFlyoutItem();
-                            menuFlyoutItem.Text = "Delete";
-                            menuFlyoutItem.Tag = testIButton.Tag;
-                            menuFlyoutItem.Click += MenuFlyoutItem_Click;
-                            menuFlyout.Items.Add(menuFlyoutItem);
-                            // FontIcon ItemIcon = new FontIcon();
-                            // ItemIcon.Glyph = "&#xE72D;";
-                            menuFlyoutItem.Icon = new SymbolIcon(Symbol.Delete);
-                            testIButton.ContextFlyout = menuFlyout;
-                            stPanel.Children.Add(testIButton);
-
-                            Debug.WriteLine("File info " + path);
-                        
+                        await createShortCut(file, exePath);
                     }
             }
             catch (Exception error)
@@ -479,15 +339,15 @@ namespace AppAppBar3
                 Debug.WriteLine(error.Message);
             }
         }
+
+        
         private async void Grid_Drop(object sender, DragEventArgs e)
         {
-           // stPanel.Background = null;
             Debug.WriteLine("Dropped");
             if (e.DataView.Contains(StandardDataFormats.StorageItems))
             {
                 IReadOnlyList<IStorageItem> files = await e.DataView.GetStorageItemsAsync();
                 StorageFile file = files.First() as StorageFile;
-                
 
                 var name = file.Name;
                 var path = file.Path;
@@ -500,46 +360,12 @@ namespace AppAppBar3
                     IWshRuntimeLibrary.IWshShortcut sc = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(path);
                     path = sc.TargetPath;
                 }
-                var iconThumbnail = await file.GetScaledImageAsThumbnailAsync(ThumbnailMode.SingleItem, 32);
-                var bi = new BitmapImage();
-                bi.DecodePixelHeight = 32;
-                bi.DecodePixelWidth = 32;
-                bi.SetSource(iconThumbnail);
-               
-                Image ButtonImageEL = new Image();
-                ButtonImageEL.Source = bi;
-                ButtonImageEL.Height = 32;
-                ButtonImageEL.Width = 32;
-
-                Button testIButton = new Button();
-                testIButton.Background = new SolidColorBrush(Colors.Transparent);
-                testIButton.BorderBrush = new SolidColorBrush(Colors.Transparent);
-                testIButton.Content = ButtonImageEL;
-                testIButton.Click += Button_Click;
-                testIButton.Tag = path;
-                
-                MenuFlyout menuFlyout = new MenuFlyout();
-                MenuFlyoutItem menuFlyoutItem = new MenuFlyoutItem();
-                menuFlyoutItem.Text = "Delete";
-                menuFlyoutItem.Tag = testIButton.Tag;
-                menuFlyoutItem.Click += MenuFlyoutItem_Click;
-                menuFlyout.Items.Add(menuFlyoutItem);
-
-                // FontIcon ItemIcon = new FontIcon();
-                // ItemIcon.Glyph = "&#xE72D;";
-                menuFlyoutItem.Icon = new SymbolIcon(Symbol.Delete);
-                testIButton.ContextFlyout = menuFlyout;
-                stPanel.Children.Add(testIButton);
-
-                Debug.WriteLine("File info " + name + " " + path);
-
+                await createShortCut(file, path);
                 try
                 {
                     // Create a file that the application will store user specific shortcut data in.
-                     var userDataLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    using (StreamWriter sw = System.IO.File.AppendText(userDataLocal + @"\shortcuts.txt"))
+                    using (StreamWriter sw = System.IO.File.AppendText(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt"))
                         sw.WriteLine(path);
-                    Debug.WriteLine(userDataLocal.ToString());
                 }
                 catch (IOException error)
                 {
@@ -552,6 +378,57 @@ namespace AppAppBar3
             }
         }
 
+        private async Task createShortCut(StorageFile aFile, String aPath)
+        {
+            try
+            {
+                var iconThumbnail = await aFile.GetScaledImageAsThumbnailAsync(ThumbnailMode.SingleItem, 32);
+                var bi = new BitmapImage() 
+                {
+                    DecodePixelHeight = 32,
+                    DecodePixelWidth = 32,
+                };
+                bi.SetSource(iconThumbnail);
+
+                Image ButtonImageEL = new Image()
+                {
+                    Source = bi,
+                    Height = 32,
+                    Width = 32,
+                 };
+
+                Button testIButton = new Button()
+                {
+                    Background = new SolidColorBrush(Colors.Transparent),
+                    BorderBrush = new SolidColorBrush(Colors.Transparent),
+                    Content = ButtonImageEL,
+                    Tag = aPath,
+                 };
+                testIButton.Click += Button_Click;
+
+
+                MenuFlyout menuFlyout = new MenuFlyout();
+                MenuFlyoutItem menuFlyoutItem = new MenuFlyoutItem() 
+                {
+                    Text = "Delete",
+                    Tag = testIButton.Tag,
+                    Icon = new SymbolIcon(Symbol.Delete),
+                 };
+               
+                menuFlyoutItem.Click += MenuFlyoutItem_Click;
+                menuFlyout.Items.Add(menuFlyoutItem);
+                testIButton.ContextFlyout = menuFlyout;
+                stPanel.Children.Add(testIButton);
+
+                Debug.WriteLine("File info " + aPath);
+
+            }
+            catch (Exception error)
+            {
+                Debug.WriteLine(error.Message);
+            }
+        }
+        #endregion
         private void UnregisterAppBar()
         {
             RegisterBar(ABEdge.Top, cbMonitor.SelectedItem as string);
@@ -568,15 +445,12 @@ namespace AppAppBar3
             {
                 Debug.WriteLine("Error " + error);
             }
-            
            
         }
         private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
         {
-            Debug.WriteLine("Button Delete Clicked");
-            var userDataLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-            System.IO.File.Delete(userDataLocal + @"\shortcuts.txt");
+            System.IO.File.Delete(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt");
             foreach (var item in stPanel.Children)
             {
                 if(item.GetType() == typeof(Button))
@@ -588,7 +462,7 @@ namespace AppAppBar3
                     }
                     else
                     {
-                        using (StreamWriter sa = System.IO.File.AppendText(userDataLocal + @"\shortcuts.txt"))
+                        using (StreamWriter sa = System.IO.File.AppendText(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt"))
                             sa.WriteLine(((Button)item).Tag.ToString());
                     }
                 }
@@ -597,7 +471,6 @@ namespace AppAppBar3
 
         }
        
-                
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
@@ -615,40 +488,34 @@ namespace AppAppBar3
             if (settingsWindow == null)
             {
                 settingsWindow = new Settings(MonitorList,uCallBack);
+                settingsWindow.ExtendsContentIntoTitleBar = true;
                 settingsWindow.Activate();
+                
                 DockToAppBar(settingsWindow);
+                OpenWindows.Add(settingsWindow);
             }
             else
             {
                 settingsWindow.Close();
+                OpenWindows.Remove(settingsWindow);
                 settingsWindow = null;
             }
         }
-
+        WindowDetect wappWindow;
         private void DetectWindow_click(object sender, RoutedEventArgs e)
         {
-            int newWindowWidth = 0;// = screenWidth;
-            int newWindowHeight = 0;// = screenHeight - 100;
-            int newWindowX = 0;//= (int)(taskbarRect.X);
-            int newWindowY = 0;//= 100;
             foreach (var mon in _MonitorList)
             {
                 var displayNumString = Regex.Match(mon, @"\d+").Value;
                 var workarea = getMonitorWorkRect(mon);
 
-               // WindowDetect windowDetect = new WindowDetect(displayNumString);
-                var wappWindow = new WindowDetect(displayNumString).GetAppWindow();
-
-                newWindowWidth = wappWindow.Size.Width;
-                newWindowHeight = wappWindow.Size.Height;
-                newWindowX = workarea.right - wappWindow.Size.Width - 50;
-                newWindowY = workarea.bottom - (wappWindow.Size.Height + 50);
+                wappWindow = new WindowDetect(displayNumString);
+                wappWindow.ExtendsContentIntoTitleBar = true;
+                var dwindow = wappWindow.GetAppWindow();
                 wappWindow.Show();
                 //windowDetect.Show
-                
-                wappWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
-                
 
+                dwindow.MoveAndResize(new Windows.Graphics.RectInt32(workarea.right - dwindow.Size.Width - 50, workarea.bottom - (dwindow.Size.Height + 50), dwindow.Size.Width, dwindow.Size.Height));
             }
         }
 
@@ -664,7 +531,6 @@ namespace AppAppBar3
                 Debug.WriteLine("Selected Monitor Text**********" + (cbMonitor.SelectedItem as string));
         }
 
-       
 
         private void relocateWindowLocation()
         {
@@ -710,11 +576,13 @@ namespace AppAppBar3
             {
                 webWindow = new WebWindow();
                 webWindow.Activate();
+                OpenWindows.Add(webWindow);
                 DockToAppBar(webWindow);
             }
             else
             {
                 webWindow.Close();
+                OpenWindows.Remove(webWindow);
                 webWindow = null;
             }
            
@@ -789,12 +657,21 @@ namespace AppAppBar3
                 }
             }
          
-
-
             webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
             
         }
 
-       
+        private void appbarWindow_Closed(object sender, WindowEventArgs args)
+        {
+            foreach(var window in OpenWindows)
+            {
+                if(window != null)
+                {
+                    window.Close();
+                }
+                
+            }
+
+        }
     }
 }

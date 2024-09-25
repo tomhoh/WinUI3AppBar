@@ -20,8 +20,10 @@ namespace AppAppBar3
         public const int GWL_STYLE = -16;
         public const int WS_CAPTION = 0x00C00000;
         public const int WS_THICKFRAME = 0x00040000;
+        
         public WebWindow()
         {
+            
             this.InitializeComponent();
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WindowId windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
@@ -39,6 +41,11 @@ namespace AppAppBar3
             await webView.EnsureCoreWebView2Async();
             webView.CoreWebView2.Navigate("https://www.microsoft.com");
 
+           
+        }
+
+        private void webWindow_Closed(object sender, WindowEventArgs args)
+        {
            
         }
     }
