@@ -186,7 +186,7 @@ namespace AppAppBar3
         public const int SWP_ASYNCWINDOWPOS = 0x4000;
         private void ABSetPos(ABEdge edge, string selectedMonitor)
         {
-           
+            Debug.WriteLine("the selected monitor in ABSETPOS " + selectedMonitor);
             var hWnd = WindowNative.GetWindowHandle(this);
             abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
@@ -239,7 +239,7 @@ namespace AppAppBar3
             Debug.WriteLine("abd bottom " + abd.rc.bottom);
             
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
-            //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
+            appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
             // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
             MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
            // MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
@@ -535,6 +535,11 @@ namespace AppAppBar3
         private void relocateWindowLocation()
         {
             Debug.WriteLine("This is the edge var "+Edge);
+
+
+            
+               // ABSetPos(edgeMonitor.SelectedItem as ABEdge?null, cbMonitor.SelectedItem as string);
+
             if (Edge == "Top")
             {
                 Debug.WriteLine("Edge Selection Top " + Edge);
