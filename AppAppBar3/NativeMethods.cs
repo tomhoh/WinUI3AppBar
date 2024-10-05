@@ -113,13 +113,8 @@ namespace AppAppBar3
             ABN_WINDOWARRANGE
         }
 
-        public enum ABEdge : int
-        {
-            Left = 0,
-            Top = 1,
-            Right = 2,
-            Bottom = 3
-        }
+       
+     
        /* public struct RECT
         {
             public int left;

@@ -4,6 +4,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using Windows.Storage;
 using WinUIEx.Messaging;
 
 
@@ -20,6 +22,14 @@ namespace AppAppBar3
 
         [DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        public enum ABEdge : int
+        {
+            Left = 0,
+            Top = 1,
+            Right = 2,
+            Bottom = 3
+        }
 
         private AppWindow settingWindow;
         public const int GWL_STYLE = -16;
@@ -51,6 +61,10 @@ namespace AppAppBar3
             IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hwnd, GWL_STYLE, style);
+            cbMonitorSettings.SelectedItem = loadSettings("monitor");
+            bsize.Value = Convert.ToDouble(loadSettings("bar_size"));
+            cbEdgeSettings.SelectedItem = loadEdgeSettings("edge");
+            cbEdgeSettings.ItemsSource = Enum.GetValues(typeof(ABEdge));
         }
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
@@ -98,10 +112,73 @@ namespace AppAppBar3
                    // SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
                    // break;
             }
+    
 
 
 
+        }
+        private void saveEdgeSetting(string setting, int value)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
+            // Save a setting locally on the device
+            localSettings.Values[setting] = value;
+        }
+        private void saveSetting(string setting,  string value)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // Save a setting locally on the device
+            localSettings.Values[setting] = value;
+        }
+
+        private string loadSettings(string setting)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // load a setting that is local to the device
+            if (localSettings.Values[setting] != null)
+            {
+                return localSettings.Values[setting] as string;
+            }
+            else
+            {
+                return "0";
+            }
+        }
+        private ABEdge loadEdgeSettings(string setting)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+            //return (ABEdge)localSettings.Values[setting];
+            // load a setting that is local to the device
+            if (localSettings.Values[setting] != null)
+            {
+                return (ABEdge)localSettings.Values[setting];
+            }
+            else
+            {
+                return ABEdge.Top;
+            }
+        }
+
+        private void cbMonitorSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
+        {
+            saveSetting("monitor",cbMonitorSettings.SelectedItem as string);
+        }
+
+        private void bsize_ValueChanged(Microsoft.UI.Xaml.Controls.NumberBox sender, Microsoft.UI.Xaml.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            saveSetting("bar_size", bsize.Value.ToString());
+        }
+
+        private void cbEdgeSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
+        {
+            saveEdgeSetting("edge", (int)cbEdgeSettings.SelectedItem);
+        }
+
+        private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 }
