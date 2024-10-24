@@ -22,6 +22,7 @@ using WinUIEx;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Windows.Data.Xml.Dom;
+using Microsoft.Win32;
 
 
 
@@ -29,6 +30,7 @@ namespace AppAppBar3
 {
     using static NativeMethods;
     using static MonitorHelper;
+    
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
 
@@ -40,7 +42,7 @@ namespace AppAppBar3
 
        
         int barSize;
-        ABEdge startEdge;
+      //  ABEdge startEdge;
 
         public ObservableCollection<string> MonitorList
         {
@@ -114,13 +116,18 @@ namespace AppAppBar3
         { 
             cbMonitor.DataContext = this;
             edgeMonitor.DataContext = this;
-            selectedItemsText = @"\\.\DISPLAY1";
+           // selectedItemsText = @"\\.\DISPLAY1";
          
             if (appWindow == null)
             {
+               // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
+                
+                edgeMonitor.SelectedItem = loadEdgeSettings("edge");
                 barSize = Convert.ToInt32(loadSettings("bar_size"));
                 cbMonitor.SelectedItem = loadSettings("monitor");
-                edgeMonitor.SelectedItem = loadEdgeSettings("edge");
+                
+               // edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
+                Debug.WriteLine("Window activated edge from settings " + loadEdgeSettings("edge"));
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 appWindow = AppWindow.GetFromWindowId(windowId);
@@ -134,8 +141,8 @@ namespace AppAppBar3
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
-                    RegisterBar(ABEdge.Top,cbMonitor.SelectedItem as string);
-                    edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
+                    RegisterBar((ABEdge)loadEdgeSettings("edge"), cbMonitor.SelectedItem as string);
+                   // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
                     //Edge = ABEdge.Top;
                     
                     // Optionally, unsubscribe from Activated event after first activation
@@ -150,13 +157,16 @@ namespace AppAppBar3
                 
                 MonitorList = new ObservableCollection<string>(monitors);
                
-                cbMonitor.SelectedIndex = 0;
+                //cbMonitor.SelectedIndex = 0;
                 loadShortCuts();
+                
             }
 
         }
 
-       APPBARDATA abd;
+       
+
+        APPBARDATA abd;
 
         private void RegisterBar(ABEdge edge, string selectedMonitor)
         {
@@ -600,7 +610,7 @@ namespace AppAppBar3
         }
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-           //Edge = ((ABEdge)edgeMonitor.SelectedItem);
+           Edge = ((ABEdge)edgeMonitor.SelectedItem);
             Debug.WriteLine("This is the selecteditem edge "+Edge);
             relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
             Debug.WriteLine("Edge Selection Changed********** "+ Edge);
@@ -711,7 +721,7 @@ namespace AppAppBar3
 
         }
 
-        private string loadSettings(string setting)
+        private  string loadSettings(string setting)
         {
             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
@@ -726,7 +736,7 @@ namespace AppAppBar3
             }
         }
 
-        private ABEdge loadEdgeSettings(string setting)
+        private  ABEdge loadEdgeSettings(string setting)
         {
             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             //return (ABEdge)localSettings.Values[setting];
@@ -740,5 +750,7 @@ namespace AppAppBar3
                 return ABEdge.Top;
             }
         }
+
+       
     }
 }

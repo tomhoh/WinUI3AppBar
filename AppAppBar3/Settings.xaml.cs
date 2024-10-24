@@ -1,5 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.Win32;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -12,6 +14,7 @@ using WinUIEx.Messaging;
 
 namespace AppAppBar3
 {
+    
     /// <summary>
     /// An empty window that can be used on its own or navigated to within a Frame.
     /// </summary>
@@ -65,12 +68,15 @@ namespace AppAppBar3
             bsize.Value = Convert.ToDouble(loadSettings("bar_size"));
             cbEdgeSettings.SelectedItem = loadEdgeSettings("edge");
             cbEdgeSettings.ItemsSource = Enum.GetValues(typeof(ABEdge));
+            loadOnStartupCheckBox.IsChecked = loadOnStartup("LoadOnStartup");
         }
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
             cbMonitorSettings.ItemsSource = mList;
 
         }
+       
+
 
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
@@ -132,6 +138,14 @@ namespace AppAppBar3
             localSettings.Values[setting] = value;
         }
 
+        private void saveBoolSetting(string setting, bool value)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // Save a setting locally on the device
+            localSettings.Values[setting] = value;
+        }
+
         private string loadSettings(string setting)
         {
             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
@@ -146,6 +160,21 @@ namespace AppAppBar3
                 return "0";
             }
         }
+        private bool loadOnStartup(string setting)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // load a setting that is local to the device
+            if (localSettings.Values[setting] != null)
+            {
+                return (bool)(localSettings.Values[setting]);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private ABEdge loadEdgeSettings(string setting)
         {
             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
@@ -179,6 +208,29 @@ namespace AppAppBar3
         private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private void loadOnStartupCheckBox_Checked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+           
+            
+        }
+
+        private async void loadOnStartupCheckBox_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            Windows.ApplicationModel.StartupTask startupTask = await Windows.ApplicationModel.StartupTask.GetAsync("AppAppBar3Id");
+        if((sender as CheckBox).IsChecked == true)
+            {
+            switch(startupTask.State)
+                {
+                    case Windows.ApplicationModel.StartupTaskState.Disabled:
+                        Windows.ApplicationModel.StartupTaskState state = await startupTask.RequestEnableAsync();
+                        break;
+                    case Windows.ApplicationModel.StartupTaskState.Enabled:
+                        startupTask.Disable();
+                        break;
+                }
+            }
         }
     }
 }
