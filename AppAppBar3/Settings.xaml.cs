@@ -226,10 +226,19 @@ namespace AppAppBar3
                     case Windows.ApplicationModel.StartupTaskState.Disabled:
                         Windows.ApplicationModel.StartupTaskState state = await startupTask.RequestEnableAsync();
                         break;
-                    case Windows.ApplicationModel.StartupTaskState.Enabled:
-                        startupTask.Disable();
+                    case Windows.ApplicationModel.StartupTaskState.DisabledByUser:
+                        Debug.WriteLine("Run at startup Startup disabled by user");
                         break;
-                }
+                    case Windows.ApplicationModel.StartupTaskState.DisabledByPolicy:
+                        Debug.WriteLine("Run at startup Startup disabled by Policy");
+                        break;
+                    case Windows.ApplicationModel.StartupTaskState.EnabledByPolicy:
+                        Debug.WriteLine("Run at startup Startup Enabled by Policy");
+                        break;
+                } 
+             }else
+            {
+                startupTask.Disable();
             }
         }
     }
