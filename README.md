@@ -23,14 +23,13 @@ Because the included example docking window uses webview 2 you will also need to
 - Handles per-monitor DPI scaling
 - Does not show in switcher
 - Excluded from aero peek
-- Follows current window desktop theme
+- Follows current Windows desktop theme
 - Handles Drag and drop shortcut with deletion, autosaving and auto restore on startup
-
+- Option to run at login (autostart).
 ## To do
 - Build into Library
 - code refractoring
 - Bug fixes
-- watch for other appbars comming and going to automatically adjust.
 - allow for custom theme (currenlty only supports current desktop theme)
 
 
