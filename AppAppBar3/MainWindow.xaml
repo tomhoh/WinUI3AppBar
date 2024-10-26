@@ -26,20 +26,17 @@
                 </ToggleButton>
 
 
-                <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedValue="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Edge" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
-                    <x:String>Top</x:String>
-                    <x:String>Bottom</x:String>
-                    <x:String>Left</x:String>
-                    <x:String>Right</x:String>
+            <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedItem="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"  SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Top" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
+                    
                 </ComboBox>
                 <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
 
                </ComboBox>
                 <Button Content="Close" Margin="0,0,0,0" Click="CloseButton_Click" Width="{Binding ItemWidth, ElementName=VariableGrid}"/>
-                <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" MinWidth="{Binding ItemWidth, ElementName=VariableGrid}">
-                    <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
-                    <AppBarButton Icon="DockRight" Label="Right"/>
-                    <AppBarButton Icon="DockBottom" Label="Bottom"/>
+            <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" MinWidth="{Binding ItemWidth, ElementName=VariableGrid}">
+                <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
+                <AppBarButton Icon="DockRight" Label="Right"/>
+                <AppBarButton Icon="DockBottom" Label="Bottom"/>
                 <AppBarButton Icon="DockLeft" Label="Left"/>
                 <AppBarButton  Label="Identify Monitor" Click="DetectWindow_click">
                     <AppBarButton.Icon>
@@ -48,9 +45,9 @@
                 </AppBarButton>
 
                 <AppBarButton Icon="Setting" Label="Settings" Click="Settings_Click"/>
-               
+
             </CommandBar>
-            </VariableSizedWrapGrid>
+        </VariableSizedWrapGrid>
             
         </StackPanel>
         

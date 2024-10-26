@@ -21,6 +21,8 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Windows.Data.Xml.Dom;
+using Microsoft.Win32;
 
 
 
@@ -28,6 +30,7 @@ namespace AppAppBar3
 {
     using static NativeMethods;
     using static MonitorHelper;
+    
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
 
@@ -35,8 +38,11 @@ namespace AppAppBar3
         private ObservableCollection<string> _MonitorList; 
         
         string selectedItemsText;
-        WindowMessageMonitor monitor; 
+        WindowMessageMonitor monitor;
 
+       
+        int barSize;
+      //  ABEdge startEdge;
 
         public ObservableCollection<string> MonitorList
         {
@@ -47,6 +53,7 @@ namespace AppAppBar3
                 OnPropertyChanged();
             }
         }
+       
 
         private List<Window> _OpenWindows = new List<Window>();
         public List<Window> OpenWindows
@@ -57,11 +64,18 @@ namespace AppAppBar3
                 _OpenWindows = value;
                // OnPropertyChanged();
             }
+        } 
+        public enum ABEdge : int
+        {
+            Left = 0,
+            Top = 1,
+            Right = 2,
+            Bottom = 3
         }
 
-        private string _Edge;
+        private ABEdge _Edge;
 
-        public string Edge
+        public ABEdge Edge
         {
             get => _Edge;
             set
@@ -78,13 +92,14 @@ namespace AppAppBar3
         private AppWindow appWindow;
         public MainWindow()
         {
+         
             this.InitializeComponent();
             this.Activated += OnActivated;
             this.AppWindow.IsShownInSwitchers = false;
 
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
-
+            edgeMonitor.ItemsSource = Enum.GetValues(typeof(ABEdge));
         }
        
 
@@ -101,16 +116,23 @@ namespace AppAppBar3
         { 
             cbMonitor.DataContext = this;
             edgeMonitor.DataContext = this;
-            selectedItemsText = @"\\.\DISPLAY1";
+           // selectedItemsText = @"\\.\DISPLAY1";
          
             if (appWindow == null)
             {
+               // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
                 
+                edgeMonitor.SelectedItem = loadEdgeSettings("edge");
+                barSize = Convert.ToInt32(loadSettings("bar_size"));
+                cbMonitor.SelectedItem = loadSettings("monitor");
+                
+               // edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
+                Debug.WriteLine("Window activated edge from settings " + loadEdgeSettings("edge"));
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 appWindow = AppWindow.GetFromWindowId(windowId);
                 //Hide window so it is not visible on startup.  Shown at window move
-                appWindow.Hide();
+                //appWindow.Hide();
 
                 //remove from aero peek
                     int value = 0x01;
@@ -119,9 +141,9 @@ namespace AppAppBar3
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
-                    RegisterBar(ABEdge.Top,cbMonitor.SelectedItem as string);
-                    edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
-                    Edge = "Top";
+                    RegisterBar((ABEdge)loadEdgeSettings("edge"), cbMonitor.SelectedItem as string);
+                   // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
+                    //Edge = ABEdge.Top;
                     
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
@@ -135,13 +157,16 @@ namespace AppAppBar3
                 
                 MonitorList = new ObservableCollection<string>(monitors);
                
-                cbMonitor.SelectedIndex = 0;
+                //cbMonitor.SelectedIndex = 0;
                 loadShortCuts();
+                
             }
 
         }
 
-       APPBARDATA abd;
+       
+
+        APPBARDATA abd;
 
         private void RegisterBar(ABEdge edge, string selectedMonitor)
         {
@@ -211,17 +236,17 @@ namespace AppAppBar3
              switch (abd.uEdge)
              {
                  case (int)ABEdge.Left:
-                     abd.rc.right = abd.rc.left +100;
+                     abd.rc.right = abd.rc.left +barSize;
                      break;
                  case (int)ABEdge.Right:
-                    abd.rc.left = abd.rc.right - 100;
+                    abd.rc.left = abd.rc.right - barSize;
                     Debug.WriteLine("the left side " + abd.rc.left +" the right side "+abd.rc.right);
                      break;
                  case (int)ABEdge.Top:
-                     abd.rc.bottom = abd.rc.top + 100;
+                     abd.rc.bottom = abd.rc.top + barSize;
                     break;
                  case (int)ABEdge.Bottom:
-                    abd.rc.top = abd.rc.bottom - 100;
+                    abd.rc.top = abd.rc.bottom - barSize;
                      break;
              }
 
@@ -239,13 +264,16 @@ namespace AppAppBar3
             Debug.WriteLine("abd bottom " + abd.rc.bottom);
             
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
-            appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
+            //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
             // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
-            MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-           // MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-
+            HwndExtensions.SetWindowSize(hWnd, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
+            bool success = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+            Debug.WriteLine("Did we sucessed with resize and move *1* ? " + success);
+           // bool success2 = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+            //Debug.WriteLine("Did we sucessed with resize and move *2* ? " + success2);
+           // HwndExtensions.SetWindowPositionAndSize(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
             //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
-            appWindow.Show();
+            //appWindow.Show();
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -265,7 +293,7 @@ namespace AppAppBar3
                     case (int)ABNotify.ABN_POSCHANGED: //arries when bar changes to different monitor
                         Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
                       //  monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                      relocateWindowLocation();
+                      relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
                       //  monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                         break;
@@ -276,6 +304,7 @@ namespace AppAppBar3
             {
                 case (int)AppBarMessages.ABM_WINDOWPOSCHANGED:
                     Debug.WriteLine("window changed position changed notification " + e.Message.ToString());
+                    //relocateWindowLocation();
                     SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
                     break;
             }
@@ -297,7 +326,7 @@ namespace AppAppBar3
                     cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
 
                     cbMonitor.SelectedItem = seletedMon;
-
+                   // relocateWindowLocation();
                     monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                     break;
@@ -523,7 +552,7 @@ namespace AppAppBar3
         {
             edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
             Debug.WriteLine("Monitor selection changed");
-            relocateWindowLocation();
+            relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
             edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
             
             selectedItemsText = (cbMonitor.SelectedItem as String);
@@ -532,36 +561,48 @@ namespace AppAppBar3
         }
 
 
-        private void relocateWindowLocation()
+        private void relocateWindowLocation(ABEdge theSelectedEdge)
         {
             Debug.WriteLine("This is the edge var "+Edge);
-
-
             
-               // ABSetPos(edgeMonitor.SelectedItem as ABEdge?null, cbMonitor.SelectedItem as string);
-
-            if (Edge == "Top")
+           
+               ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
+            if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
             {
-                Debug.WriteLine("Edge Selection Top " + Edge);
+                Debug.WriteLine("Edge Selection " + Edge);
 
-                ABSetPos(ABEdge.Top, cbMonitor.SelectedItem as string);
                 stPanel.Orientation = Orientation.Horizontal;
             }
-            else if (Edge == "Bottom")
+            else
             {
-                ABSetPos(ABEdge.Bottom, cbMonitor.SelectedItem as string);
-                stPanel.Orientation = Orientation.Horizontal;
-            }
-            else if (Edge == "Left")
-            {
-                ABSetPos(ABEdge.Left, cbMonitor.SelectedItem as string);
                 stPanel.Orientation = Orientation.Vertical;
             }
-            else if (Edge == "Right")
-            {
-                ABSetPos(ABEdge.Right, cbMonitor.SelectedItem as string);
-                stPanel.Orientation = Orientation.Vertical;
-            }
+
+            /*  
+
+           if (Edge == "Top")
+           {
+               Debug.WriteLine("Edge Selection Top " + Edge);
+
+               ABSetPos(ABEdge.Top, cbMonitor.SelectedItem as string);
+               stPanel.Orientation = Orientation.Horizontal;
+           }
+           else if (Edge == "Bottom")
+           {
+               ABSetPos(ABEdge.Bottom, cbMonitor.SelectedItem as string);
+               stPanel.Orientation = Orientation.Horizontal;
+           }
+           else if (Edge == "Left")
+           {
+               ABSetPos(ABEdge.Left, cbMonitor.SelectedItem as string);
+               stPanel.Orientation = Orientation.Vertical;
+           }
+           else if (Edge == "Right")
+           {
+               ABSetPos(ABEdge.Right, cbMonitor.SelectedItem as string);
+               stPanel.Orientation = Orientation.Vertical;
+           }
+           */
             if (webWindow != null)
             {
                 DockToAppBar(webWindow);
@@ -569,8 +610,9 @@ namespace AppAppBar3
         }
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-           Edge = (edgeMonitor.SelectedItem as string);
-            relocateWindowLocation();
+           Edge = ((ABEdge)edgeMonitor.SelectedItem);
+            Debug.WriteLine("This is the selecteditem edge "+Edge);
+            relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
             Debug.WriteLine("Edge Selection Changed********** "+ Edge);
            
         }
@@ -607,7 +649,7 @@ namespace AppAppBar3
             
             var workarea = getMonitorWorkRect(cbMonitor.SelectedItem as string);
 
-            if (Edge == "Top")
+            if (Edge == ABEdge.Top)
             {
                 newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
@@ -621,7 +663,7 @@ namespace AppAppBar3
                 }
 
             }
-            else if (Edge == "Bottom")
+            else if (Edge == ABEdge.Bottom)
             {
                 newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
@@ -634,7 +676,7 @@ namespace AppAppBar3
                     newWindowX = (int)((appWindow.Size.Width / 2) - (wappWindow.Size.Width / 2));
                 }
             }
-            else if (Edge == "Left")
+            else if (Edge == ABEdge.Left)
             {
                 newWindowWidth = workarea.right - workarea.left ;
                 newWindowHeight = workarea.bottom;
@@ -648,7 +690,7 @@ namespace AppAppBar3
                 }
 
             }
-            else if (Edge == "Right")
+            else if (Edge == ABEdge.Right)
             {
                 newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
@@ -678,5 +720,37 @@ namespace AppAppBar3
             }
 
         }
+
+        private  string loadSettings(string setting)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // load a setting that is local to the device
+            if (localSettings.Values[setting] != null)
+            {
+                return localSettings.Values[setting] as string;
+            }
+            else
+            {
+                return "0";
+            }
+        }
+
+        private  ABEdge loadEdgeSettings(string setting)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+            //return (ABEdge)localSettings.Values[setting];
+            // load a setting that is local to the device
+            if (localSettings.Values[setting] != null)
+            {
+                return (ABEdge)localSettings.Values[setting];
+            }
+            else
+            {
+                return ABEdge.Top;
+            }
+        }
+
+       
     }
 }
