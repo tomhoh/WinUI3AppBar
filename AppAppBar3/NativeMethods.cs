@@ -35,9 +35,19 @@ namespace AppAppBar3
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("Shcore.dll")]
+        public static extern IntPtr GetDpiForMonitor([In] IntPtr hmonitor, [In] DpiType dpiType, [Out] out uint dpiX, [Out] out uint dpiY);
+    
 
+    ///https://msdn.microsoft.com/en-us/library/windows/desktop/dn280511(v=vs.85).aspx
+    public enum DpiType
+    {
+        Effective = 0,
+        Angular = 1,
+        Raw = 2,
+    }
 
-        [DllImport("user32.dll")]
+    [DllImport("user32.dll")]
         public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]

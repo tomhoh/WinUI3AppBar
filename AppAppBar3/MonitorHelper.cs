@@ -5,7 +5,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.Arm;
 using System.Threading;
+using Windows.UI.Core.AnimationMetrics;
 
 
 namespace AppAppBar3
@@ -41,7 +43,39 @@ namespace AppAppBar3
             
             return monitorNames;
         }
-     
+
+        public static double GetScale(string monitor)
+        {
+            double scale = 1;
+            uint dpiX;
+            uint dpiY;
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
+            {
+                Debug.WriteLine("monitor name in GetScale******** " + monitor);
+                MONITORINFOEX mi = new MONITORINFOEX();
+                mi.cbSize = Marshal.SizeOf(mi);
+                if (GetMonitorInfo(hMonitor, ref mi))
+                {
+                    Debug.WriteLine("monitor name " + mi.szDevice + " msent " + monitor + " " + mi.dwFlags.ToString());
+                    if (mi.szDevice == monitor)
+                    {
+                        NativeMethods.GetDpiForMonitor(hMonitor, DpiType.Effective, out dpiX, out dpiY);
+                        
+                         if (dpiX > 96)
+                            scale = (double)dpiX / 96d;
+                        Debug.WriteLine("!!!!!!!!!!!!!!!scale in GetScale ******** " +dpiX+" " +scale);
+
+                        return false;
+                    }
+                }
+                // Stop enumeration
+
+                return true;
+            }, IntPtr.Zero);
+            return scale;
+           
+        }
+
         public static RECT getMonitorWorkRect(string monitor)
         {
             RECT windowRect = new RECT();
