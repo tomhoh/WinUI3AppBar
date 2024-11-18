@@ -228,26 +228,26 @@ namespace AppAppBar3
             // Query the system for an approved size and position. 
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
-           
 
+            Debug.WriteLine("********Scale Factor**************** " + GetScale(selectedMonitor));
             // Adjust the rectangle, depending on the edge to which the 
             // appbar is anchored. 
-           
+
              switch (abd.uEdge)
              {
                  case (int)ABEdge.Left:
-                     abd.rc.right = abd.rc.left +barSize;
-                     break;
+                     abd.rc.right = (int)(abd.rc.left + (barSize * GetScale(selectedMonitor)));
+                    break;
                  case (int)ABEdge.Right:
-                    abd.rc.left = abd.rc.right - barSize;
+                    abd.rc.left = (int)(abd.rc.right - (barSize * GetScale(selectedMonitor)));
                     Debug.WriteLine("the left side " + abd.rc.left +" the right side "+abd.rc.right);
                      break;
                  case (int)ABEdge.Top:
-                     abd.rc.bottom = abd.rc.top + barSize;
+                     abd.rc.bottom = (int)(abd.rc.top + (barSize * GetScale(selectedMonitor)));
                     break;
                  case (int)ABEdge.Bottom:
-                    abd.rc.top = abd.rc.bottom - barSize;
-                     break;
+                    abd.rc.top = (int)(abd.rc.bottom - (barSize * GetScale(selectedMonitor)));
+                    break;
              }
 
             // Pass the final bounding rectangle to the system. 
@@ -578,31 +578,7 @@ namespace AppAppBar3
                 stPanel.Orientation = Orientation.Vertical;
             }
 
-            /*  
-
-           if (Edge == "Top")
-           {
-               Debug.WriteLine("Edge Selection Top " + Edge);
-
-               ABSetPos(ABEdge.Top, cbMonitor.SelectedItem as string);
-               stPanel.Orientation = Orientation.Horizontal;
-           }
-           else if (Edge == "Bottom")
-           {
-               ABSetPos(ABEdge.Bottom, cbMonitor.SelectedItem as string);
-               stPanel.Orientation = Orientation.Horizontal;
-           }
-           else if (Edge == "Left")
-           {
-               ABSetPos(ABEdge.Left, cbMonitor.SelectedItem as string);
-               stPanel.Orientation = Orientation.Vertical;
-           }
-           else if (Edge == "Right")
-           {
-               ABSetPos(ABEdge.Right, cbMonitor.SelectedItem as string);
-               stPanel.Orientation = Orientation.Vertical;
-           }
-           */
+           
             if (webWindow != null)
             {
                 DockToAppBar(webWindow);
