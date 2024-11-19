@@ -41,7 +41,7 @@ namespace AppAppBar3
         WindowMessageMonitor monitor;
 
        
-        int barSize;
+//int barSize;
       //  ABEdge startEdge;
 
         public ObservableCollection<string> MonitorList
@@ -123,7 +123,7 @@ namespace AppAppBar3
                // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
                 
                 edgeMonitor.SelectedItem = loadEdgeSettings("edge");
-                barSize = Convert.ToInt32(loadSettings("bar_size"));
+                //barSize = Convert.ToInt32(loadSettings("bar_size"));
                 cbMonitor.SelectedItem = loadSettings("monitor");
                 
                // edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
@@ -232,21 +232,23 @@ namespace AppAppBar3
             Debug.WriteLine("********Scale Factor**************** " + GetScale(selectedMonitor));
             // Adjust the rectangle, depending on the edge to which the 
             // appbar is anchored. 
-
-             switch (abd.uEdge)
+            // Eventhough Winui 3 is set to auto scale the Win32 Appbar does not.  we use GetScale(monitor)
+            // to get this done.
+            var theBarSize = Convert.ToInt32(loadSettings("bar_size"));
+             switch (abd.uEdge) 
              {
                  case (int)ABEdge.Left:
-                     abd.rc.right = (int)(abd.rc.left + (barSize * GetScale(selectedMonitor)));
+                     abd.rc.right = (int)(abd.rc.left + (theBarSize * GetScale(selectedMonitor)));
                     break;
                  case (int)ABEdge.Right:
-                    abd.rc.left = (int)(abd.rc.right - (barSize * GetScale(selectedMonitor)));
+                    abd.rc.left = (int)(abd.rc.right - (theBarSize * GetScale(selectedMonitor)));
                     Debug.WriteLine("the left side " + abd.rc.left +" the right side "+abd.rc.right);
                      break;
                  case (int)ABEdge.Top:
-                     abd.rc.bottom = (int)(abd.rc.top + (barSize * GetScale(selectedMonitor)));
+                     abd.rc.bottom = (int)(abd.rc.top + (theBarSize * GetScale(selectedMonitor)));
                     break;
                  case (int)ABEdge.Bottom:
-                    abd.rc.top = (int)(abd.rc.bottom - (barSize * GetScale(selectedMonitor)));
+                    abd.rc.top = (int)(abd.rc.bottom - (theBarSize * GetScale(selectedMonitor)));
                     break;
              }
 
@@ -511,12 +513,29 @@ namespace AppAppBar3
             UnregisterAppBar();
             this.Close();
         }
+
+        public void restartAppBar()
+        {
+            ABSetPos((ABEdge)loadEdgeSettings("edge"), cbMonitor.SelectedItem as string);
+            //ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
+
+        }
         Settings settingsWindow;
+
+        public void closeSettingsWindow()
+        {
+            if (settingsWindow != null)
+            {
+                settingsWindow.Close();
+                OpenWindows.Remove(settingsWindow);
+                settingsWindow = null;
+            }
+        }
         private void Settings_Click(object sender, RoutedEventArgs e)
         {
             if (settingsWindow == null)
             {
-                settingsWindow = new Settings(MonitorList,uCallBack);
+                settingsWindow = new Settings(MonitorList,uCallBack,this);
                 settingsWindow.ExtendsContentIntoTitleBar = true;
                 settingsWindow.Activate();
                 

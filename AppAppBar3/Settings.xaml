@@ -24,11 +24,17 @@
         <TextBlock Margin="10,10,0,0">Startup Monitor:</TextBlock>
         <ComboBox x:Name="cbMonitorSettings" Margin="10,10,0,0"  PlaceholderText="Pick Screen" Width="200" MinWidth="200" SelectionChanged="cbMonitorSettings_SelectionChanged">
             </ComboBox>
-        <TextBlock Margin="10,10,0,0">Bar Width:</TextBlock>
-        <NumberBox x:Name="bsize" Margin="10,10,0,0" Width="100" HorizontalAlignment="Left" ValueChanged="bsize_ValueChanged"></NumberBox>
-        <CheckBox x:Name="loadOnStartupCheckBox" Click="loadOnStartupCheckBox_Click" Checked="loadOnStartupCheckBox_Checked" Margin="10,10,0,0" Content="Load on Startup"></CheckBox>
-        <Button x:Name="closeSettingsButton" Margin="220,70,0,0" Content="Close" Click="closeSettingsButton_Click"/>
 
+            <TextBlock Margin="10,10,0,0">Bar Width:</TextBlock>
+        <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" Height="50" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+
+            <NumberBox x:Name="bsize" Margin="10,10,0,0" Width="100" HorizontalAlignment="Left" ValueChanged="bsize_ValueChanged"></NumberBox>
+            
+            <Button x:Name="restartAppBarButton" Margin="10,10,0,0" Content="Apply" Click="restartAppBarButton_Click" Visibility="Collapsed" IsTabStop="True"/>
+        </StackPanel>
+        <CheckBox x:Name="loadOnStartupCheckBox" Click="loadOnStartupCheckBox_Click" Checked="loadOnStartupCheckBox_Checked" Margin="10,10,0,0" Content="Load on Startup" IsTabStop="False"></CheckBox>
+            <Button x:Name="closeSettingsButton" Margin="220,70,0,0" Content="Close" Click="closeSettingsButton_Click"/>
+        
 
 
 

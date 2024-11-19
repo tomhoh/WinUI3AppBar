@@ -1,5 +1,6 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
 using System;
@@ -41,13 +42,14 @@ namespace AppAppBar3
         public const int ABN_POSCHANGED = 1;
         public int appBarCallBack;
         WindowMessageMonitor monitor;
+        MainWindow parentWindow;
 
         public ObservableCollection<string> mList;
-        public Settings(ObservableCollection<string> MonList, int appBarCall )
+        public Settings(ObservableCollection<string> MonList, int appBarCall,MainWindow Parent)
         {
             mList = MonList;
             appBarCallBack = appBarCall;
-
+            parentWindow = Parent;
             this.InitializeComponent();
             this.Activated += OnActivated;
             monitor = new WindowMessageMonitor(this);
@@ -197,7 +199,20 @@ namespace AppAppBar3
 
         private void bsize_ValueChanged(Microsoft.UI.Xaml.Controls.NumberBox sender, Microsoft.UI.Xaml.Controls.NumberBoxValueChangedEventArgs args)
         {
-            saveSetting("bar_size", bsize.Value.ToString());
+            if(bsize.Value == Convert.ToDouble(loadSettings("bar_size")))
+            {
+                restartAppBarButton.Visibility = Visibility.Collapsed;
+
+            }
+            else
+            {
+                saveSetting("bar_size", bsize.Value.ToString());
+
+                restartAppBarButton.Visibility = Visibility.Visible;
+                restartAppBarButton.Focus(FocusState.Keyboard);
+
+            }
+
         }
 
         private void cbEdgeSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
@@ -207,7 +222,8 @@ namespace AppAppBar3
 
         private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            this.Close();
+            parentWindow.closeSettingsWindow();
+            //this.Close();
         }
 
         private void loadOnStartupCheckBox_Checked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -221,10 +237,11 @@ namespace AppAppBar3
             Windows.ApplicationModel.StartupTask startupTask = await Windows.ApplicationModel.StartupTask.GetAsync("AppAppBar3Id");
         if((sender as CheckBox).IsChecked == true)
             {
-            switch(startupTask.State)
+                switch (startupTask.State)
                 {
                     case Windows.ApplicationModel.StartupTaskState.Disabled:
                         Windows.ApplicationModel.StartupTaskState state = await startupTask.RequestEnableAsync();
+                        saveBoolSetting("LoadOnStartup", true);
                         break;
                     case Windows.ApplicationModel.StartupTaskState.DisabledByUser:
                         Debug.WriteLine("Run at startup Startup disabled by user");
@@ -239,7 +256,17 @@ namespace AppAppBar3
              }else
             {
                 startupTask.Disable();
+                saveBoolSetting("LoadOnStartup", false);
             }
+        }
+
+        
+
+        private void restartAppBarButton_Click(object sender, RoutedEventArgs e)
+        {
+            parentWindow.restartAppBar();
+            restartAppBarButton.Visibility = Visibility.Collapsed;
+            
         }
     }
 }
