@@ -11,7 +11,7 @@
   <Identity
     Name="2a8aaef2-040b-4397-88b2-eedcf8549829"
     Publisher="CN=tomho"
-    Version="1.0.2.0" />
+    Version="1.0.4.0" />
 
   <mp:PhoneIdentity PhoneProductId="2a8aaef2-040b-4397-88b2-eedcf8549829" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
