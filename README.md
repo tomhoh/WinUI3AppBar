@@ -32,7 +32,8 @@ Because the included example docking window uses webview 2 you will also need to
 - Bug fixes
 - allow for custom theme (currenlty only supports current desktop theme)
 
-
+## Notes
+12/08/24  Just realized that the last several commits did not have a default settings for first time run.  Now included in code.  Will cleanup later into a static class file.
 
 ### License
 MIT License
