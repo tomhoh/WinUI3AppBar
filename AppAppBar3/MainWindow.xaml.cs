@@ -120,11 +120,27 @@ namespace AppAppBar3
          
             if (appWindow == null)
             {
-               // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
-                
-                edgeMonitor.SelectedItem = loadEdgeSettings("edge");
-                //barSize = Convert.ToInt32(loadSettings("bar_size"));
-                cbMonitor.SelectedItem = loadSettings("monitor");
+                // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
+
+                //check if settings file exists
+                if (!Windows.Storage.ApplicationData.Current.LocalSettings.Values.ContainsKey("edge"))
+                {
+                    saveSetting("bar_size", "50");
+                    saveSetting("monitor", @"\\.\DISPLAY1");
+                    saveBoolSetting("LoadOnStartup", true);
+                    saveEdgeSetting("edge", 1);
+                    edgeMonitor.SelectedItem = loadEdgeSettings("edge");
+                    //barSize = Convert.ToInt32(loadSettings("bar_size"));
+                    cbMonitor.SelectedItem = loadSettings("monitor");
+                }
+               
+                else
+                {
+                    edgeMonitor.SelectedItem = loadEdgeSettings("edge");
+                    //barSize = Convert.ToInt32(loadSettings("bar_size"));
+                    cbMonitor.SelectedItem = loadSettings("monitor");
+                }
+               
                 
                // edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
                 Debug.WriteLine("Window activated edge from settings " + loadEdgeSettings("edge"));
@@ -746,6 +762,29 @@ namespace AppAppBar3
             }
         }
 
-       
+        private void saveEdgeSetting(string setting, int value)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // Save a setting locally on the device
+            localSettings.Values[setting] = value;
+        }
+        private void saveSetting(string setting, string value)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // Save a setting locally on the device
+            localSettings.Values[setting] = value;
+        }
+
+        private void saveBoolSetting(string setting, bool value)
+        {
+            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+
+            // Save a setting locally on the device
+            localSettings.Values[setting] = value;
+        }
+
+
     }
 }
