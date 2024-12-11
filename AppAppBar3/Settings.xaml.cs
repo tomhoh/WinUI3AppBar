@@ -27,13 +27,7 @@ namespace AppAppBar3
         [DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
-        public enum ABEdge : int
-        {
-            Left = 0,
-            Top = 1,
-            Right = 2,
-            Bottom = 3
-        }
+       
 
         private AppWindow settingWindow;
         public const int GWL_STYLE = -16;
@@ -66,10 +60,13 @@ namespace AppAppBar3
             IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hwnd, GWL_STYLE, style);
-            cbMonitorSettings.SelectedItem = loadSettings("monitor");
-            bsize.Value = Convert.ToDouble(loadSettings("bar_size"));
-            cbEdgeSettings.SelectedItem = loadEdgeSettings("edge");
-            cbEdgeSettings.ItemsSource = Enum.GetValues(typeof(ABEdge));
+            cbMonitorSettings.SelectedItem = (string)SettingMethods.loadSettings("monitor");
+           // bsize.Value = Convert.ToDouble(loadSettings("bar_size"));
+            bsize.Value = Convert.ToDouble((int)SettingMethods.loadSettings("bar_size"));
+
+            cbEdgeSettings.ItemsSource = Enum.GetValues(typeof(NativeMethods.ABEdge));
+            cbEdgeSettings.SelectedItem = (NativeMethods.ABEdge)SettingMethods.loadSettings("edge");
+            
             loadOnStartupCheckBox.IsChecked = loadOnStartup("LoadOnStartup");
         }
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
@@ -125,43 +122,43 @@ namespace AppAppBar3
 
 
         }
-        private void saveEdgeSetting(string setting, int value)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+        /* private void saveEdgeSetting(string setting, int value)
+         {
+             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
-            // Save a setting locally on the device
-            localSettings.Values[setting] = value;
-        }
-        private void saveSetting(string setting,  string value)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+             // Save a setting locally on the device
+             localSettings.Values[setting] = value;
+         }
+         private void saveSetting(string setting,  string value)
+         {
+             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
-            // Save a setting locally on the device
-            localSettings.Values[setting] = value;
-        }
+             // Save a setting locally on the device
+             localSettings.Values[setting] = value;
+         }
 
-        private void saveBoolSetting(string setting, bool value)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+         private void saveBoolSetting(string setting, bool value)
+         {
+             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
-            // Save a setting locally on the device
-            localSettings.Values[setting] = value;
-        }
+             // Save a setting locally on the device
+             localSettings.Values[setting] = value;
+         }
 
-        private string loadSettings(string setting)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+         private string loadSettings(string setting)
+         {
+             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
-            // load a setting that is local to the device
-            if (localSettings.Values[setting] != null)
-            {
-                return localSettings.Values[setting] as string;
-            }
-            else
-            {
-                return "0";
-            }
-        }
+             // load a setting that is local to the device
+             if (localSettings.Values[setting] != null)
+             {
+                 return localSettings.Values[setting] as string;
+             }
+             else
+             {
+                 return "0";
+             }
+         }*/
         private bool loadOnStartup(string setting)
         {
             ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
@@ -177,36 +174,22 @@ namespace AppAppBar3
             }
         }
 
-        private ABEdge loadEdgeSettings(string setting)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-            //return (ABEdge)localSettings.Values[setting];
-            // load a setting that is local to the device
-            if (localSettings.Values[setting] != null)
-            {
-                return (ABEdge)localSettings.Values[setting];
-            }
-            else
-            {
-                return ABEdge.Top;
-            }
-        }
 
         private void cbMonitorSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
         {
-            saveSetting("monitor",cbMonitorSettings.SelectedItem as string);
+            SettingMethods.saveSetting("monitor",cbMonitorSettings.SelectedItem as string);
         }
 
         private void bsize_ValueChanged(Microsoft.UI.Xaml.Controls.NumberBox sender, Microsoft.UI.Xaml.Controls.NumberBoxValueChangedEventArgs args)
         {
-            if(bsize.Value == Convert.ToDouble(loadSettings("bar_size")))
+            if(bsize.Value == (int)SettingMethods.loadSettings("bar_size"))
             {
                 restartAppBarButton.Visibility = Visibility.Collapsed;
 
             }
             else
             {
-                saveSetting("bar_size", bsize.Value.ToString());
+                SettingMethods.saveSetting("bar_size", Convert.ToInt32(bsize.Value));
 
                 restartAppBarButton.Visibility = Visibility.Visible;
                 restartAppBarButton.Focus(FocusState.Keyboard);
@@ -217,7 +200,7 @@ namespace AppAppBar3
 
         private void cbEdgeSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
         {
-            saveEdgeSetting("edge", (int)cbEdgeSettings.SelectedItem);
+            SettingMethods.saveSetting("edge", (int)cbEdgeSettings.SelectedItem);
         }
 
         private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -241,7 +224,7 @@ namespace AppAppBar3
                 {
                     case Windows.ApplicationModel.StartupTaskState.Disabled:
                         Windows.ApplicationModel.StartupTaskState state = await startupTask.RequestEnableAsync();
-                        saveBoolSetting("LoadOnStartup", true);
+                        SettingMethods.saveSetting("LoadOnStartup", true);
                         break;
                     case Windows.ApplicationModel.StartupTaskState.DisabledByUser:
                         Debug.WriteLine("Run at startup Startup disabled by user");
@@ -256,7 +239,7 @@ namespace AppAppBar3
              }else
             {
                 startupTask.Disable();
-                saveBoolSetting("LoadOnStartup", false);
+                SettingMethods.saveSetting("LoadOnStartup", false);
             }
         }
 

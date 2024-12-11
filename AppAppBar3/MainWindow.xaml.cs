@@ -34,15 +34,10 @@ namespace AppAppBar3
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
 
-        private String[] _MonItems;
         private ObservableCollection<string> _MonitorList; 
         
         string selectedItemsText;
         WindowMessageMonitor monitor;
-
-       
-//int barSize;
-      //  ABEdge startEdge;
 
         public ObservableCollection<string> MonitorList
         {
@@ -65,13 +60,7 @@ namespace AppAppBar3
                // OnPropertyChanged();
             }
         } 
-        public enum ABEdge : int
-        {
-            Left = 0,
-            Top = 1,
-            Right = 2,
-            Bottom = 3
-        }
+      
 
         private ABEdge _Edge;
 
@@ -84,7 +73,6 @@ namespace AppAppBar3
                 OnPropertyChanged();
             }
         }
-        public string[] MonItems() { return _MonItems; }
         private bool fBarRegistered = false;
         public List<string> monitors;
 
@@ -125,30 +113,22 @@ namespace AppAppBar3
                 //check if settings file exists
                 if (!Windows.Storage.ApplicationData.Current.LocalSettings.Values.ContainsKey("edge"))
                 {
-                    saveSetting("bar_size", "50");
-                    saveSetting("monitor", @"\\.\DISPLAY1");
-                    saveBoolSetting("LoadOnStartup", true);
-                    saveEdgeSetting("edge", 1);
-                    edgeMonitor.SelectedItem = loadEdgeSettings("edge");
-                    //barSize = Convert.ToInt32(loadSettings("bar_size"));
-                    cbMonitor.SelectedItem = loadSettings("monitor");
+                    SettingMethods.setDefaultValues();
+                    edgeMonitor.SelectedItem = (ABEdge)SettingMethods.loadSettings("edge");
+                    cbMonitor.SelectedItem = (string)SettingMethods.loadSettings("monitor");
                 }
                
                 else
                 {
-                    edgeMonitor.SelectedItem = loadEdgeSettings("edge");
-                    //barSize = Convert.ToInt32(loadSettings("bar_size"));
-                    cbMonitor.SelectedItem = loadSettings("monitor");
+                    edgeMonitor.SelectedItem = (ABEdge)SettingMethods.loadSettings("edge");
+                    cbMonitor.SelectedItem = (string)SettingMethods.loadSettings("monitor");
                 }
                
                 
-               // edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
-                Debug.WriteLine("Window activated edge from settings " + loadEdgeSettings("edge"));
+                Debug.WriteLine("Window activated edge from settings " + (ABEdge)SettingMethods.loadSettings("edge"));
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 appWindow = AppWindow.GetFromWindowId(windowId);
-                //Hide window so it is not visible on startup.  Shown at window move
-                //appWindow.Hide();
 
                 //remove from aero peek
                     int value = 0x01;
@@ -157,10 +137,8 @@ namespace AppAppBar3
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
-                    RegisterBar((ABEdge)loadEdgeSettings("edge"), cbMonitor.SelectedItem as string);
-                   // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
-                    //Edge = ABEdge.Top;
-                    
+                    RegisterBar((ABEdge)SettingMethods.loadSettings("edge"), (string)SettingMethods.loadSettings("monitor"));
+
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
                 }
@@ -173,7 +151,6 @@ namespace AppAppBar3
                 
                 MonitorList = new ObservableCollection<string>(monitors);
                
-                //cbMonitor.SelectedIndex = 0;
                 loadShortCuts();
                 
             }
@@ -213,10 +190,10 @@ namespace AppAppBar3
                 fBarRegistered = false;
             }
         }
-        private const int ABS_AUTOHIDE = 0x1;
+       /* private const int ABS_AUTOHIDE = 0x1;
         private const int ABS_ALWAYSONTOP = 0x2;
         private const int HWND_TOPMOST = -1;
-        private const int HWND_NOTOPMOST = -2;
+        private const int HWND_NOTOPMOST = -2;*/
       //  private const int SWP_NOMOVE = 0x0002;
       //  private const int SWP_NOSIZE = 0x0001;
         const uint SWP_NOZORDER = 0x0004;
@@ -224,7 +201,7 @@ namespace AppAppBar3
         //const uint WS_EX_TOOLWINDOW = 0x00000080;
        // const uint WS_VISIBLE = 0x10000000;
 
-        public const int SWP_ASYNCWINDOWPOS = 0x4000;
+       // public const int SWP_ASYNCWINDOWPOS = 0x4000;
         private void ABSetPos(ABEdge edge, string selectedMonitor)
         {
             Debug.WriteLine("the selected monitor in ABSETPOS " + selectedMonitor);
@@ -250,8 +227,19 @@ namespace AppAppBar3
             // appbar is anchored. 
             // Eventhough Winui 3 is set to auto scale the Win32 Appbar does not.  we use GetScale(monitor)
             // to get this done.
-            var theBarSize = Convert.ToInt32(loadSettings("bar_size"));
-             switch (abd.uEdge) 
+            //var theBarSize = Convert.ToInt32(loadSettings("bar_size"));
+            int theBarSize;
+            if (SettingMethods.loadSettings("bar_size") != null)
+            {
+                theBarSize = (int)SettingMethods.loadSettings("bar_size");
+            }
+            else
+            {
+                theBarSize = 50;
+            }
+                
+
+            switch (abd.uEdge) 
              {
                  case (int)ABEdge.Left:
                      abd.rc.right = (int)(abd.rc.left + (theBarSize * GetScale(selectedMonitor)));
@@ -532,7 +520,7 @@ namespace AppAppBar3
 
         public void restartAppBar()
         {
-            ABSetPos((ABEdge)loadEdgeSettings("edge"), cbMonitor.SelectedItem as string);
+            ABSetPos((ABEdge)SettingMethods.loadSettings("edge"), (string)SettingMethods.loadSettings("monitor"));
             //ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
 
         }
@@ -732,58 +720,7 @@ namespace AppAppBar3
 
         }
 
-        private  string loadSettings(string setting)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
 
-            // load a setting that is local to the device
-            if (localSettings.Values[setting] != null)
-            {
-                return localSettings.Values[setting] as string;
-            }
-            else
-            {
-                return "0";
-            }
-        }
-
-        private  ABEdge loadEdgeSettings(string setting)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-            //return (ABEdge)localSettings.Values[setting];
-            // load a setting that is local to the device
-            if (localSettings.Values[setting] != null)
-            {
-                return (ABEdge)localSettings.Values[setting];
-            }
-            else
-            {
-                return ABEdge.Top;
-            }
-        }
-
-        private void saveEdgeSetting(string setting, int value)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-
-            // Save a setting locally on the device
-            localSettings.Values[setting] = value;
-        }
-        private void saveSetting(string setting, string value)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-
-            // Save a setting locally on the device
-            localSettings.Values[setting] = value;
-        }
-
-        private void saveBoolSetting(string setting, bool value)
-        {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-
-            // Save a setting locally on the device
-            localSettings.Values[setting] = value;
-        }
 
 
     }

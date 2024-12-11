@@ -12,15 +12,16 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <StartupObject></StartupObject>
     <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
-    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundle>Never</AppxBundle>
-    <AppInstallerUri>C:\ProgramFiles\TMH</AppInstallerUri>
+    <AppInstallerUri>C:\Program Files\TMH</AppInstallerUri>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
     <AssemblyName>AppAppBar3</AssemblyName>
+    <PackageCertificateThumbprint>2C316BF94DE42C49EEE29DF14679C9ACEA1FB94D</PackageCertificateThumbprint>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Settings.xaml" />

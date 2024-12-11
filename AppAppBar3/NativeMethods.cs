@@ -8,7 +8,7 @@ using WinUIEx;
 
 namespace AppAppBar3
 {
-    internal static class NativeMethods
+    public static class NativeMethods
     {
 
         public const int GWL_STYLE = -16;
@@ -122,16 +122,22 @@ namespace AppAppBar3
             ABN_FULLSCREENAPP,
             ABN_WINDOWARRANGE
         }
-
-       
-     
-       /* public struct RECT
+        public enum ABEdge : int
         {
-            public int left;
-            public int top;
-            public int right;
-            public int bottom;
-        }*/
+            Left = 0,
+            Top = 1,
+            Right = 2,
+            Bottom = 3
+        }
+
+
+        /* public struct RECT
+         {
+             public int left;
+             public int top;
+             public int right;
+             public int bottom;
+         }*/
 
         [DllImport("dwmapi.dll")]
         public static extern int DwmSetWindowAttribute(IntPtr hwnd, DwmWindowAttribute dwAttribute, ref int pvAttribute, int cbAttribute);
