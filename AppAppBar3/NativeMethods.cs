@@ -162,5 +162,13 @@ namespace AppAppBar3
             DWMWA_FREEZE_REPRESENTATION,
             DWMWA_LAST
         }
+        //remove window decorations by removing border, caption, titlebar etc
+        //remove corner radius by removing border and caption, remove title bar
+        public static void removeWindowDecoration(IntPtr hwnd)
+        {
+            IntPtr style = GetWindowLong(hwnd, GWL_STYLE);
+            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
+            SetWindowLong(hwnd, GWL_STYLE, style);
+        }
     }
 }

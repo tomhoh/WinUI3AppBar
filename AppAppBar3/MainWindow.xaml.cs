@@ -287,7 +287,7 @@ namespace AppAppBar3
         /******************* OnWindowMessageReceived is WndProc****************/
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
-            Debug.WriteLine("*************Message receieved********** " + e.Message.ToString());
+           // Debug.WriteLine("*************Message receieved********** " + e.Message.ToString());
             const int WM_DISPLAYCHANGE = 7;
 
             if (e.Message.MessageId == uCallBack)
