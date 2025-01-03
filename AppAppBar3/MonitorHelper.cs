@@ -60,7 +60,6 @@ namespace AppAppBar3
             };
 
             EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-            // ObservableCollection<string> oList = new ObservableCollection<string>(monitorNames);
 
             return monitors;
         }

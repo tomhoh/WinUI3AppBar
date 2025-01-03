@@ -35,13 +35,11 @@ namespace AppAppBar3
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
 
-       // private ObservableCollection<string> _MonitorList;
         private ObservableCollection<Monitor> _MonitorList;
 
         string selectedItemsText;
         WindowMessageMonitor monitor;
 
-        //public ObservableCollection<string> MonitorList
         public ObservableCollection<Monitor> MonitorList
 
         {
@@ -68,12 +66,6 @@ namespace AppAppBar3
                 }
                 return new ObservableCollection<string>(mList);
             }
-           // get => (Monitor)_MonitorList.MonitorName;
-            //set
-           // {
-               // _MonitorList = value;
-               // OnPropertyChanged();
-            //}
         }
 
 
@@ -84,7 +76,6 @@ namespace AppAppBar3
             set
             {
                 _OpenWindows = value;
-               // OnPropertyChanged();
             }
         } 
       
@@ -185,16 +176,8 @@ namespace AppAppBar3
                     {
                         monitors.Add(monitor.MonitorName);
                     }
-                   // MonitorList = new ObservableCollection<string>(monitors);
 
                 }
-                // Debug.WriteLine(monitor);
-                // foreach (var monitor in monitors)
-                // {
-                //Debug.WriteLine(monitor);
-                // }
-
-                // MonitorList = new ObservableCollection<string>(monitors);
                 edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
                 cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
                 loadShortCuts();
@@ -288,7 +271,6 @@ namespace AppAppBar3
             // appbar is anchored. 
             // Eventhough Winui 3 is set to auto scale the Win32 Appbar does not.  we use GetScale(monitor)
             // to get this done.
-            //var theBarSize = Convert.ToInt32(loadSettings("bar_size"));
             int theBarSize;
             if (SettingMethods.loadSettings("bar_size") != null)
             {
@@ -388,16 +370,12 @@ namespace AppAppBar3
                     var seletedMon = (cbMonitor.SelectedItem as String);
 
                     Debug.WriteLine("Monitor attached ");
-                   // var list1 = MonitorHelper.GetMonitors();
                     cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
-                   // list1.Sort();
                     MonitorList = null;
-                    ///////////////// MonitorList = new ObservableCollection<string>(list1);
                     MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
                     cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
 
                     cbMonitor.SelectedItem = seletedMon;
-                   // relocateWindowLocation();
                     monitor.WindowMessageReceived += OnWindowMessageReceived;
 
                     break;
