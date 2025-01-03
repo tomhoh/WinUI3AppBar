@@ -4,10 +4,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
+using System.Threading;
 using Windows.Storage;
 using WinUIEx.Messaging;
 
@@ -15,6 +17,8 @@ using WinUIEx.Messaging;
 
 namespace AppAppBar3
 {
+    using static SettingMethods;
+    using static NativeMethods;
     public sealed partial class Settings : WinUIEx.WindowEx
     {
        
@@ -23,7 +27,9 @@ namespace AppAppBar3
         WindowMessageMonitor monitor;
         MainWindow parentWindow;
 
-        public Settings(ObservableCollection<string> MonList, int appBarCall,MainWindow Parent)
+       // public Settings(ObservableCollection<string> MonList, int appBarCall,MainWindow Parent)
+        public Settings(List<string> MonList, int appBarCall, MainWindow Parent)
+
         {
             appBarCallBack = appBarCall;
             parentWindow = Parent;
@@ -42,11 +48,11 @@ namespace AppAppBar3
             NativeMethods.removeWindowDecoration(hwnd);
 
             cbMonitorSettings.ItemsSource = MonList;
-            cbMonitorSettings.SelectedItem = (string)SettingMethods.loadSettings("monitor");
-            bsize.Value = (int)SettingMethods.loadSettings("bar_size");
+            cbMonitorSettings.SelectedItem = (string)loadSettings("monitor");
+            bsize.Value = (int)loadSettings("bar_size");
 
-            cbEdgeSettings.ItemsSource = Enum.GetValues(typeof(NativeMethods.ABEdge));
-            cbEdgeSettings.SelectedItem = (NativeMethods.ABEdge)SettingMethods.loadSettings("edge");
+            cbEdgeSettings.ItemsSource = Enum.GetValues(typeof(ABEdge));
+            cbEdgeSettings.SelectedItem = (ABEdge)loadSettings("edge");
 
             loadOnStartupCheckBox.IsChecked = loadOnStartup("LoadOnStartup");
         }
@@ -119,19 +125,19 @@ namespace AppAppBar3
 
         private void cbMonitorSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
         {
-            SettingMethods.saveSetting("monitor",cbMonitorSettings.SelectedItem as string);
+            saveSetting("monitor",cbMonitorSettings.SelectedItem as string);
         }
 
         private void bsize_ValueChanged(Microsoft.UI.Xaml.Controls.NumberBox sender, Microsoft.UI.Xaml.Controls.NumberBoxValueChangedEventArgs args)
         {
-            if(bsize.Value == (int)SettingMethods.loadSettings("bar_size"))
+            if(bsize.Value == (int)loadSettings("bar_size"))
             {
                 restartAppBarButton.Visibility = Visibility.Collapsed;
 
             }
             else
             {
-                SettingMethods.saveSetting("bar_size", Convert.ToInt32(bsize.Value));
+                saveSetting("bar_size", Convert.ToInt32(bsize.Value));
 
                 restartAppBarButton.Visibility = Visibility.Visible;
                 restartAppBarButton.Focus(FocusState.Keyboard);
@@ -142,7 +148,7 @@ namespace AppAppBar3
 
         private void cbEdgeSettings_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
         {
-            SettingMethods.saveSetting("edge", (int)cbEdgeSettings.SelectedItem);
+            saveSetting("edge", (int)cbEdgeSettings.SelectedItem);
         }
 
         private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -162,7 +168,7 @@ namespace AppAppBar3
                 {
                     case Windows.ApplicationModel.StartupTaskState.Disabled:
                         Windows.ApplicationModel.StartupTaskState state = await startupTask.RequestEnableAsync();
-                        SettingMethods.saveSetting("LoadOnStartup", true);
+                        saveSetting("LoadOnStartup", true);
                         break;
                     case Windows.ApplicationModel.StartupTaskState.DisabledByUser:
                         Debug.WriteLine("Run at startup Startup disabled by user");
@@ -177,7 +183,7 @@ namespace AppAppBar3
              }else
             {
                 startupTask.Disable();
-                SettingMethods.saveSetting("LoadOnStartup", false);
+                saveSetting("LoadOnStartup", false);
             }
         }
 

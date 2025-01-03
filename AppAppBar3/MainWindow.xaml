@@ -29,7 +29,7 @@
             <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedItem="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"  SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Top" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
                     
                 </ComboBox>
-                <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding MonitorList, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
+            <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding ListOfMonitors, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
 
                </ComboBox>
                 <Button Content="Close" Margin="0,0,0,0" Click="CloseButton_Click" Width="{Binding ItemWidth, ElementName=VariableGrid}"/>

@@ -30,16 +30,20 @@ namespace AppAppBar3
 {
     using static NativeMethods;
     using static MonitorHelper;
+    using static SettingMethods;
     
     public sealed partial class MainWindow : WinUIEx.WindowEx, INotifyPropertyChanged
     {
 
-        private ObservableCollection<string> _MonitorList; 
-        
+       // private ObservableCollection<string> _MonitorList;
+        private ObservableCollection<Monitor> _MonitorList;
+
         string selectedItemsText;
         WindowMessageMonitor monitor;
 
-        public ObservableCollection<string> MonitorList
+        //public ObservableCollection<string> MonitorList
+        public ObservableCollection<Monitor> MonitorList
+
         {
             get => _MonitorList;
             set
@@ -48,7 +52,30 @@ namespace AppAppBar3
                 OnPropertyChanged();
             }
         }
-       
+
+        public ObservableCollection<string> ListOfMonitors
+
+
+        {
+            
+            get
+            {
+                List<string> mList = new List<string>();
+                foreach (var mon in _MonitorList)
+                {
+                    mList.Add(mon.MonitorName);
+                    
+                }
+                return new ObservableCollection<string>(mList);
+            }
+           // get => (Monitor)_MonitorList.MonitorName;
+            //set
+           // {
+               // _MonitorList = value;
+               // OnPropertyChanged();
+            //}
+        }
+
 
         private List<Window> _OpenWindows = new List<Window>();
         public List<Window> OpenWindows
@@ -75,6 +102,7 @@ namespace AppAppBar3
         }
         private bool fBarRegistered = false;
         public List<string> monitors;
+        public List<Monitor> monitorInfo;
 
         private int uCallBack;
         private AppWindow appWindow;
@@ -84,7 +112,10 @@ namespace AppAppBar3
             this.InitializeComponent();
             this.Activated += OnActivated;
             this.AppWindow.IsShownInSwitchers = false;
-
+            monitorInfo = GetMonitorsInfo();
+            MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
+            cbMonitor.DataContext = this;
+            edgeMonitor.DataContext = this;
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
             edgeMonitor.ItemsSource = Enum.GetValues(typeof(ABEdge));
@@ -101,31 +132,33 @@ namespace AppAppBar3
 
        
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
-        { 
-            cbMonitor.DataContext = this;
-            edgeMonitor.DataContext = this;
-           // selectedItemsText = @"\\.\DISPLAY1";
-         
+        {
+
+            cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
+            edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
+            // selectedItemsText = @"\\.\DISPLAY1";
+
             if (appWindow == null)
             {
-                // edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
+               
 
                 //check if settings file exists
+
                 if (!Windows.Storage.ApplicationData.Current.LocalSettings.Values.ContainsKey("edge"))
                 {
                     SettingMethods.setDefaultValues();
-                    edgeMonitor.SelectedItem = (ABEdge)SettingMethods.loadSettings("edge");
-                    cbMonitor.SelectedItem = (string)SettingMethods.loadSettings("monitor");
+                    edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
+                    cbMonitor.SelectedItem = (string)loadSettings("monitor");
                 }
                
                 else
                 {
-                    edgeMonitor.SelectedItem = (ABEdge)SettingMethods.loadSettings("edge");
-                    cbMonitor.SelectedItem = (string)SettingMethods.loadSettings("monitor");
+                    edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
+                    cbMonitor.SelectedItem = (string)loadSettings("monitor");
                 }
                
                 
-                Debug.WriteLine("Window activated edge from settings " + (ABEdge)SettingMethods.loadSettings("edge"));
+                Debug.WriteLine("Window activated edge from settings " + (ABEdge)loadSettings("edge"));
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 appWindow = AppWindow.GetFromWindowId(windowId);
@@ -137,21 +170,35 @@ namespace AppAppBar3
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
-                    RegisterBar((ABEdge)SettingMethods.loadSettings("edge"), (string)SettingMethods.loadSettings("monitor"));
+                    RegisterBar((ABEdge)loadSettings("edge"), (string)loadSettings("monitor"));
 
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
                 }
-                monitors = MonitorHelper.GetMonitors();
-               // Debug.WriteLine(monitor);
-                foreach (var monitor in monitors)
-                {
-                    Debug.WriteLine(monitor);
-                }
-                
-                MonitorList = new ObservableCollection<string>(monitors);
+                //monitors = MonitorHelper.GetMonitors();
                
+        
+                if (monitorInfo != null)
+                {
+                    monitors = new List<string>();
+                    foreach (Monitor monitor in monitorInfo)
+                    {
+                        monitors.Add(monitor.MonitorName);
+                    }
+                   // MonitorList = new ObservableCollection<string>(monitors);
+
+                }
+                // Debug.WriteLine(monitor);
+                // foreach (var monitor in monitors)
+                // {
+                //Debug.WriteLine(monitor);
+                // }
+
+                // MonitorList = new ObservableCollection<string>(monitors);
+                edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
+                cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
                 loadShortCuts();
+
                 
             }
 
@@ -204,25 +251,39 @@ namespace AppAppBar3
        // public const int SWP_ASYNCWINDOWPOS = 0x4000;
         private void ABSetPos(ABEdge edge, string selectedMonitor)
         {
+            
+
             Debug.WriteLine("the selected monitor in ABSETPOS " + selectedMonitor);
             var hWnd = WindowNative.GetWindowHandle(this);
             abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
             abd.uEdge = (int)edge;
-            
-            var wrc = MonitorHelper.getMonitorRECT(selectedMonitor);
-            Debug.WriteLine("wrc right " + wrc.right);
-            abd.rc.top = wrc.top;
-              abd.rc.bottom = wrc.bottom;
-              abd.rc.left = wrc.left;
-              abd.rc.right = wrc.right;
+            //monitorInfo = GetMonitorsInfo();
+            double scaleFactor =1.5;
+           // MonitorList = null;
+           // MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
+            foreach (var monitor in MonitorList)
+            {
+                
+                if (monitor.MonitorName == selectedMonitor)
+                {
+                    Debug.WriteLine("wrc right " + monitor.WorkRect.right);
+                    abd.rc.top = monitor.WorkRect.top;
+                    abd.rc.bottom = monitor.WorkRect.bottom;
+                    abd.rc.left = monitor.WorkRect.left;
+                    abd.rc.right = monitor.WorkRect.right;
+                    //scaleFactor = monitor.scale;
+                    scaleFactor = GetScale(monitor.MonitorName);
 
-            // Query the system for an approved size and position. 
+           // var wrc = MonitorHelper.getMonitorRECT(selectedMonitor);
+
+
+                    // Query the system for an approved size and position. 
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
 
-            Debug.WriteLine("********Scale Factor**************** " + GetScale(selectedMonitor));
+            Debug.WriteLine("********Scale Factor**************** " + GetScale(monitor.MonitorName));
             // Adjust the rectangle, depending on the edge to which the 
             // appbar is anchored. 
             // Eventhough Winui 3 is set to auto scale the Win32 Appbar does not.  we use GetScale(monitor)
@@ -242,17 +303,17 @@ namespace AppAppBar3
             switch (abd.uEdge) 
              {
                  case (int)ABEdge.Left:
-                     abd.rc.right = (int)(abd.rc.left + (theBarSize * GetScale(selectedMonitor)));
+                     abd.rc.right = (int)(abd.rc.left + (theBarSize * scaleFactor));
                     break;
                  case (int)ABEdge.Right:
-                    abd.rc.left = (int)(abd.rc.right - (theBarSize * GetScale(selectedMonitor)));
+                    abd.rc.left = (int)(abd.rc.right - (theBarSize * scaleFactor));
                     Debug.WriteLine("the left side " + abd.rc.left +" the right side "+abd.rc.right);
                      break;
                  case (int)ABEdge.Top:
-                     abd.rc.bottom = (int)(abd.rc.top + (theBarSize * GetScale(selectedMonitor)));
+                     abd.rc.bottom = (int)(abd.rc.top + (theBarSize * scaleFactor));
                     break;
                  case (int)ABEdge.Bottom:
-                    abd.rc.top = (int)(abd.rc.bottom - (theBarSize * GetScale(selectedMonitor)));
+                    abd.rc.top = (int)(abd.rc.bottom - (theBarSize * scaleFactor));
                     break;
              }
 
@@ -282,6 +343,10 @@ namespace AppAppBar3
             //appWindow.Show();
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+                    break;
+                }
+
+            }
         }
 
         /******************* OnWindowMessageReceived is WndProc****************/
@@ -323,12 +388,12 @@ namespace AppAppBar3
                     var seletedMon = (cbMonitor.SelectedItem as String);
 
                     Debug.WriteLine("Monitor attached ");
-                    var list1 = MonitorHelper.GetMonitors();
+                   // var list1 = MonitorHelper.GetMonitors();
                     cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
-                    list1.Sort();
+                   // list1.Sort();
                     MonitorList = null;
-                    MonitorList = new ObservableCollection<string>(list1);
-
+                    ///////////////// MonitorList = new ObservableCollection<string>(list1);
+                    MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
                     cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
 
                     cbMonitor.SelectedItem = seletedMon;
@@ -539,7 +604,7 @@ namespace AppAppBar3
         {
             if (settingsWindow == null)
             {
-                settingsWindow = new Settings(MonitorList,uCallBack,this);
+                settingsWindow = new Settings(monitors,uCallBack,this);
                 settingsWindow.ExtendsContentIntoTitleBar = true;
                 settingsWindow.Activate();
                 
@@ -556,19 +621,28 @@ namespace AppAppBar3
         WindowDetect wappWindow;
         private void DetectWindow_click(object sender, RoutedEventArgs e)
         {
-            foreach (var mon in _MonitorList)
+            foreach (var mon in MonitorList)
             {
-                var displayNumString = Regex.Match(mon, @"\d+").Value;
-                var workarea = getMonitorWorkRect(mon);
+                var displayNumString = Regex.Match(mon.MonitorName, @"\d+").Value;
+               // foreach (var monitor in monitorInfo)
+               // {
+//if (mon.MonitorName == mon)
+                   // {
+                        RECT workarea = mon.WorkRect;
+                        wappWindow = new WindowDetect(displayNumString);
+                        wappWindow.ExtendsContentIntoTitleBar = true;
+                        var dwindow = wappWindow.GetAppWindow();
+                        wappWindow.Show();
+                        //windowDetect.Show
 
-                wappWindow = new WindowDetect(displayNumString);
-                wappWindow.ExtendsContentIntoTitleBar = true;
-                var dwindow = wappWindow.GetAppWindow();
-                wappWindow.Show();
-                //windowDetect.Show
+                        dwindow.MoveAndResize(new Windows.Graphics.RectInt32(workarea.right - dwindow.Size.Width - 50, workarea.bottom - (dwindow.Size.Height + 50), dwindow.Size.Width, dwindow.Size.Height));
 
-                dwindow.MoveAndResize(new Windows.Graphics.RectInt32(workarea.right - dwindow.Size.Width - 50, workarea.bottom - (dwindow.Size.Height + 50), dwindow.Size.Width, dwindow.Size.Height));
-            }
+                   // }
+
+                //}
+                //var workarea = getMonitorWorkRect(mon);
+
+                          }
         }
 
         private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -589,7 +663,7 @@ namespace AppAppBar3
             Debug.WriteLine("This is the edge var "+Edge);
             
            
-               ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
+              ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
             if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
             {
                 Debug.WriteLine("Edge Selection " + Edge);
@@ -621,9 +695,10 @@ namespace AppAppBar3
             if (webWindow == null)
             {
                 webWindow = new WebWindow();
+                DockToAppBar(webWindow);
                 webWindow.Activate();
                 OpenWindows.Add(webWindow);
-                DockToAppBar(webWindow);
+                
             }
             else
             {
@@ -640,20 +715,24 @@ namespace AppAppBar3
             // WindowId windowId = Win32Interop.GetWindowIdFromWindow(whWnd);
             // var wappWindow = AppWindow.GetFromWindowId(windowId);
             var wappWindow = webW.GetAppWindow();
-            
+
             int newWindowWidth = 0;// = screenWidth;
-            int newWindowHeight =0;// = screenHeight - 100;
-            int newWindowX=0;//= (int)(taskbarRect.X);
-            int newWindowY=0;//= 100;
-            
-            var workarea = getMonitorWorkRect(cbMonitor.SelectedItem as string);
+            int newWindowHeight = 0;// = screenHeight - 100;
+            int newWindowX = 0;//= (int)(taskbarRect.X);
+            int newWindowY = 0;//= 100;
+            foreach (var monitor in monitorInfo)
+                if (monitor.MonitorName == cbMonitor.SelectedItem as string)
+                {
+
+                var workarea = monitor.WorkRect;
+            //var workarea = getMonitorWorkRect(cbMonitor.SelectedItem as string);
 
             if (Edge == ABEdge.Top)
             {
                 newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
                 newWindowX = workarea.left;
-                newWindowY = workarea.top ;
+                newWindowY = workarea.top;
                 if (wappWindow.Title == "Settings")
                 {
                     newWindowWidth = wappWindow.Size.Width;
@@ -677,7 +756,7 @@ namespace AppAppBar3
             }
             else if (Edge == ABEdge.Left)
             {
-                newWindowWidth = workarea.right - workarea.left ;
+                newWindowWidth = workarea.right - workarea.left;
                 newWindowHeight = workarea.bottom;
                 newWindowX = workarea.left;
                 newWindowY = workarea.top;
@@ -702,9 +781,9 @@ namespace AppAppBar3
                     newWindowY = (int)((appWindow.Size.Height / 2) - (wappWindow.Size.Height / 2));
                 }
             }
-         
+
             webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
-            
+        }
         }
 
         private void appbarWindow_Closed(object sender, WindowEventArgs args)
