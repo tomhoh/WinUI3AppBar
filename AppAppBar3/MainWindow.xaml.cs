@@ -315,9 +315,11 @@ namespace AppAppBar3
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
             //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
             // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
-            HwndExtensions.SetWindowSize(hWnd, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
+           // HwndExtensions.SetWindowSize(hWnd, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
             bool success = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-            Debug.WriteLine("Did we sucessed with resize and move *1* ? " + success);
+            MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+
+                    Debug.WriteLine("Did we sucessed with resize and move *1* ? " + success);
            // bool success2 = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
             //Debug.WriteLine("Did we sucessed with resize and move *2* ? " + success2);
            // HwndExtensions.SetWindowPositionAndSize(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
@@ -360,10 +362,7 @@ namespace AppAppBar3
                     //relocateWindowLocation();
                     SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
                     break;
-            }
-
-            switch (e.Message.WParam)
-            {
+            
                 
                 case WM_DISPLAYCHANGE:
                     monitor.WindowMessageReceived -= OnWindowMessageReceived;
@@ -371,10 +370,12 @@ namespace AppAppBar3
 
                     Debug.WriteLine("Monitor attached ");
                     cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
+                    //relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
+
+
                     MonitorList = null;
                     MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
                     cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
-
                     cbMonitor.SelectedItem = seletedMon;
                     monitor.WindowMessageReceived += OnWindowMessageReceived;
 
