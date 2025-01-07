@@ -205,10 +205,10 @@ namespace AppAppBar3
                 SHAppBarMessage((int)AppBarMessages.ABM_NEW, ref abd);
                 fBarRegistered = true;
                 //remove corner radius by removing border and caption, remove title bar, remove from zorder, do not activate
-                IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-                style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
+                //IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+                //style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
 
-                SetWindowLong(hWnd, GWL_STYLE, style);
+                //SetWindowLong(hWnd, GWL_STYLE, style);
                 SHAppBarMessage((int)AppBarMessages.ABM_ACTIVATE, ref abd);
                 ABSetPos(edge,selectedMonitor);
                 
@@ -313,11 +313,18 @@ namespace AppAppBar3
             Debug.WriteLine("abd bottom " + abd.rc.bottom);
             
             Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
-            //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
-            // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
-           // HwndExtensions.SetWindowSize(hWnd, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
-            bool success = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-            MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+                    IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+                    style = (IntPtr)(style.ToInt64() & ~(WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
+                    SetWindowLong(hWnd, GWL_STYLE, style);
+                    //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
+                    // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
+                    // HwndExtensions.SetWindowSize(hWnd, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
+                    bool success = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
+                    //remove corner radius by removing border and caption, remove title bar, remove from zorder, do not activate
+                    //IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+                    style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
+                    SetWindowLong(hWnd, GWL_STYLE, style);
+                    // MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
 
                     Debug.WriteLine("Did we sucessed with resize and move *1* ? " + success);
            // bool success2 = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
