@@ -155,18 +155,12 @@ namespace AppAppBar3
 
                 //check if settings file exists
 
-                if (!Windows.Storage.ApplicationData.Current.LocalSettings.Values.ContainsKey("edge"))
+                if (loadSettings("edge") == null)
                 {
                     SettingMethods.setDefaultValues();
-                    edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
-                    cbMonitor.SelectedItem = (string)loadSettings("monitor");
                 }
-               
-                else
-                {
-                    edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
-                    cbMonitor.SelectedItem = (string)loadSettings("monitor");
-                }
+                edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
+                cbMonitor.SelectedItem = (string)loadSettings("monitor");
                
                 
                 Debug.WriteLine("Window activated edge from settings " + (ABEdge)loadSettings("edge"));

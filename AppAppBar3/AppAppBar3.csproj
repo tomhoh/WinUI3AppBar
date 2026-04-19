@@ -23,6 +23,19 @@
     <AssemblyName>AppAppBar3</AssemblyName>
     <PackageCertificateThumbprint>2C316BF94DE42C49EEE29DF14679C9ACEA1FB94D</PackageCertificateThumbprint>
   </PropertyGroup>
+
+  <!--
+    Unpackaged build opts. Enable by passing  -p:WindowsPackageType=None  on the
+    publish command line (see the README-style block in the commit message).
+    For a fully portable build add      -p:WindowsAppSDKSelfContained=true
+                                        -p:SelfContained=true
+                                        -p:PublishSingleFile=false
+  -->
+  <PropertyGroup Condition="'$(WindowsPackageType)' == 'None'">
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+  </PropertyGroup>
   <ItemGroup>
     <None Remove="Settings.xaml" />
     <None Remove="WebWindow.xaml" />
