@@ -96,7 +96,26 @@ namespace AppAppBar3
         public List<Monitor> monitorInfo;
 
         private int uCallBack;
+        private int taskbarCreatedMsg;
         private AppWindow appWindow;
+
+        // --- Autohide state ---
+        private enum AutohideState { Hidden, Showing, Shown, Hiding }
+        private bool autoHideEnabled;
+        private bool autohideRegistered;
+        private ABEdge autohideRegisteredEdge;
+        private RECT autohideMonitorRect;
+        private RECT shownRect;
+        private RECT hiddenRect;
+        private RECT triggerRect;
+        private AutohideState autohideState = AutohideState.Hidden;
+        private DateTime animationStart;
+        private DateTime cursorLeftShownAt = DateTime.MaxValue;
+        private bool fullscreenAppActive;
+        private DispatcherTimer autohideTimer;
+        private const int AutohideAnimMs = 200;
+        private const int AutohideHideDebounceMs = 300;
+        private const int AutohideTriggerPx = 2;
         public MainWindow()
         {
          
@@ -109,6 +128,7 @@ namespace AppAppBar3
             edgeMonitor.DataContext = this;
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
+            taskbarCreatedMsg = RegisterWindowMessage("TaskbarCreated");
             edgeMonitor.ItemsSource = Enum.GetValues(typeof(ABEdge));
         }
        
@@ -161,7 +181,7 @@ namespace AppAppBar3
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
-                    RegisterBar((ABEdge)loadSettings("edge"), (string)loadSettings("monitor"));
+                    RegisterAppBar((ABEdge)loadSettings("edge"), (string)loadSettings("monitor"));
 
                     // Optionally, unsubscribe from Activated event after first activation
                     this.Activated -= OnActivated;
@@ -189,203 +209,405 @@ namespace AppAppBar3
 
        
 
-        APPBARDATA abd;
-
-        private void RegisterBar(ABEdge edge, string selectedMonitor)
+        private void RegisterAppBar(ABEdge edge, string selectedMonitor)
         {
+            if (fBarRegistered) return;
+
             var hWnd = WindowNative.GetWindowHandle(this);
-            APPBARDATA abd = new APPBARDATA();
+            var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(abd);
             abd.hWnd = hWnd;
-            if (!fBarRegistered)
+            uCallBack = RegisterWindowMessage("AppBarMessage");
+            abd.uCallbackMessage = uCallBack;
+
+            IntPtr result = SHAppBarMessage((int)AppBarMessages.ABM_NEW, ref abd);
+            if (result == IntPtr.Zero)
             {
-                uCallBack = RegisterWindowMessage("AppBarMessage");
-                abd.uCallbackMessage = uCallBack;
+                Debug.WriteLine("ABM_NEW failed — shell rejected appbar registration.");
+                return;
+            }
+            fBarRegistered = true;
+            ABSetPos(edge, selectedMonitor);
+        }
 
-                SHAppBarMessage((int)AppBarMessages.ABM_NEW, ref abd);
-                fBarRegistered = true;
-                //remove corner radius by removing border and caption, remove title bar, remove from zorder, do not activate
-                //IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-                //style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
+        private void UnregisterAppBar()
+        {
+            StopAutohideTimer();
+            UnregisterAutohideIfNeeded();
+            if (!fBarRegistered) return;
 
-                //SetWindowLong(hWnd, GWL_STYLE, style);
-                SHAppBarMessage((int)AppBarMessages.ABM_ACTIVATE, ref abd);
-                ABSetPos(edge,selectedMonitor);
-                
+            var hWnd = WindowNative.GetWindowHandle(this);
+            var abd = new APPBARDATA();
+            abd.cbSize = Marshal.SizeOf(abd);
+            abd.hWnd = hWnd;
+            SHAppBarMessage((int)AppBarMessages.ABM_REMOVE, ref abd);
+            fBarRegistered = false;
+        }
+        private void ABSetPos(ABEdge edge, string selectedMonitor)
+        {
+            Debug.WriteLine("the selected monitor in ABSETPOS " + selectedMonitor);
+
+            autoHideEnabled = (loadSettings("autohide") as bool?) ?? false;
+
+            // Release any prior autohide registration before reconfiguring.
+            UnregisterAutohideIfNeeded();
+
+            var hWnd = WindowNative.GetWindowHandle(this);
+
+            Monitor targetMonitor = null;
+            foreach (var m in MonitorList)
+                if (m.MonitorName == selectedMonitor) { targetMonitor = m; break; }
+            if (targetMonitor == null) return;
+
+            int theBarSize = (loadSettings("bar_size") as int?) ?? 50;
+            double scaleFactor = targetMonitor.scale > 0 ? targetMonitor.scale : 1.0;
+            int barSizeScaled = (int)(theBarSize * scaleFactor);
+
+            if (!autoHideEnabled)
+            {
+                ApplyDocked(hWnd, edge, targetMonitor, barSizeScaled);
             }
             else
             {
-                
-                SHAppBarMessage((int)AppBarMessages.ABM_REMOVE, ref abd);
-                fBarRegistered = false;
+                ApplyAutohide(hWnd, edge, targetMonitor, barSizeScaled);
             }
         }
-       /* private const int ABS_AUTOHIDE = 0x1;
-        private const int ABS_ALWAYSONTOP = 0x2;
-        private const int HWND_TOPMOST = -1;
-        private const int HWND_NOTOPMOST = -2;*/
-      //  private const int SWP_NOMOVE = 0x0002;
-      //  private const int SWP_NOSIZE = 0x0001;
-        const uint SWP_NOZORDER = 0x0004;
-        const uint SWP_NOACTIVATE = 0x0010;
-        //const uint WS_EX_TOOLWINDOW = 0x00000080;
-       // const uint WS_VISIBLE = 0x10000000;
 
-       // public const int SWP_ASYNCWINDOWPOS = 0x4000;
-        private void ABSetPos(ABEdge edge, string selectedMonitor)
+        private void ApplyDocked(IntPtr hWnd, ABEdge edge, Monitor targetMonitor, int barSizeScaled)
         {
-            
+            StopAutohideTimer();
 
-            Debug.WriteLine("the selected monitor in ABSETPOS " + selectedMonitor);
-            var hWnd = WindowNative.GetWindowHandle(this);
-            abd = new APPBARDATA();
+            var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
             abd.uEdge = (int)edge;
-            //monitorInfo = GetMonitorsInfo();
-            double scaleFactor =1.5;
-           // MonitorList = null;
-           // MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
-            foreach (var monitor in MonitorList)
-            {
-                
-                if (monitor.MonitorName == selectedMonitor)
-                {
-                    Debug.WriteLine("wrc right " + monitor.WorkRect.right);
-                    abd.rc.top = monitor.WorkRect.top;
-                    abd.rc.bottom = monitor.WorkRect.bottom;
-                    abd.rc.left = monitor.WorkRect.left;
-                    abd.rc.right = monitor.WorkRect.right;
-                    //scaleFactor = monitor.scale;
-                    scaleFactor = GetScale(monitor.MonitorName);
+            abd.rc.top = targetMonitor.WorkRect.top;
+            abd.rc.bottom = targetMonitor.WorkRect.bottom;
+            abd.rc.left = targetMonitor.WorkRect.left;
+            abd.rc.right = targetMonitor.WorkRect.right;
 
-           // var wrc = MonitorHelper.getMonitorRECT(selectedMonitor);
-
-
-                    // Query the system for an approved size and position. 
-
+            // Query the system for an approved size and position.
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
 
-            Debug.WriteLine("********Scale Factor**************** " + GetScale(monitor.MonitorName));
-            // Adjust the rectangle, depending on the edge to which the 
-            // appbar is anchored. 
-            // Eventhough Winui 3 is set to auto scale the Win32 Appbar does not.  we use GetScale(monitor)
-            // to get this done.
-            int theBarSize;
-            if (SettingMethods.loadSettings("bar_size") != null)
+            switch (abd.uEdge)
             {
-                theBarSize = (int)SettingMethods.loadSettings("bar_size");
+                case (int)ABEdge.Left:   abd.rc.right  = abd.rc.left + barSizeScaled; break;
+                case (int)ABEdge.Right:  abd.rc.left   = abd.rc.right - barSizeScaled; break;
+                case (int)ABEdge.Top:    abd.rc.bottom = abd.rc.top + barSizeScaled; break;
+                case (int)ABEdge.Bottom: abd.rc.top    = abd.rc.bottom - barSizeScaled; break;
             }
-            else
-            {
-                theBarSize = 50;
-            }
-                
 
-            switch (abd.uEdge) 
-             {
-                 case (int)ABEdge.Left:
-                     abd.rc.right = (int)(abd.rc.left + (theBarSize * scaleFactor));
-                    break;
-                 case (int)ABEdge.Right:
-                    abd.rc.left = (int)(abd.rc.right - (theBarSize * scaleFactor));
-                    Debug.WriteLine("the left side " + abd.rc.left +" the right side "+abd.rc.right);
-                     break;
-                 case (int)ABEdge.Top:
-                     abd.rc.bottom = (int)(abd.rc.top + (theBarSize * scaleFactor));
-                    break;
-                 case (int)ABEdge.Bottom:
-                    abd.rc.top = (int)(abd.rc.bottom - (theBarSize * scaleFactor));
-                    break;
-             }
-
-            // Pass the final bounding rectangle to the system. 
-            /***********************Autohide not working******************************/
-          //  abd.lParam = ABS_ALWAYSONTOP;
-           // abd.lParam = (IntPtr)ABS_AUTOHIDE;
-           // IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd); // Set to autohide
-            
-           // Debug.WriteLine("Appbar state " + state);
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
-            Debug.WriteLine("abd right "+abd.rc.right);
-            Debug.WriteLine("abd Left " + abd.rc.left);
-            Debug.WriteLine("abd top " + abd.rc.top);
-            Debug.WriteLine("abd bottom " + abd.rc.bottom);
-            
-            Debug.WriteLine("Window width " + (abd.rc.right - abd.rc.left));
-                    IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-                    style = (IntPtr)(style.ToInt64() & ~(WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
-                    SetWindowLong(hWnd, GWL_STYLE, style);
-                    //appWindow.MoveAndResize(new Windows.Graphics.RectInt32(abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top)));
-                    // Move and size the appbar so that it conforms to the bounding rectangle passed to the system. 
-                    // HwndExtensions.SetWindowSize(hWnd, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
-                    bool success = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-                    //remove corner radius by removing border and caption, remove title bar, remove from zorder, do not activate
-                    //IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-                    style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME | SWP_NOZORDER | SWP_NOACTIVATE));
-                    SetWindowLong(hWnd, GWL_STYLE, style);
-                    // MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
 
-                    Debug.WriteLine("Did we sucessed with resize and move *1* ? " + success);
-           // bool success2 = MoveWindow(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), true);
-            //Debug.WriteLine("Did we sucessed with resize and move *2* ? " + success2);
-           // HwndExtensions.SetWindowPositionAndSize(hWnd, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top));
-            //SetWindowPos(hWnd, (IntPtr)HWND_TOPMOST, abd.rc.left, abd.rc.top, (abd.rc.right - abd.rc.left), (abd.rc.bottom - abd.rc.top), SWP_ASYNCWINDOWPOS);
-            //appWindow.Show();
+            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
+            SetWindowLong(hWnd, GWL_STYLE, style);
+
+            if (!MoveWindow(hWnd, abd.rc.left, abd.rc.top,
+                abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, true))
+            {
+                LogWin32Error("MoveWindow (docked)");
+            }
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+        }
+
+        private void ApplyAutohide(IntPtr hWnd, ABEdge edge, Monitor targetMonitor, int barSizeScaled)
+        {
+            // Release any docked work-area reservation that may exist from a prior mode.
+            ReleaseDockedReservation(hWnd, edge);
+
+            var mon = targetMonitor.MonitorRect;
+
+            // Register as an autohide appbar on the chosen edge of this monitor.
+            var regAbd = new APPBARDATA();
+            regAbd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+            regAbd.hWnd = hWnd;
+            regAbd.uEdge = (int)edge;
+            regAbd.rc = mon;
+            regAbd.lParam = (IntPtr)1;
+            IntPtr result = SHAppBarMessage((int)AppBarMessages.ABM_SETAUTOHIDEBAREX, ref regAbd);
+            if (result == IntPtr.Zero)
+            {
+                Debug.WriteLine("ABM_SETAUTOHIDEBAREX failed — edge already owned (e.g. Windows taskbar autohide). Falling back to docked mode.");
+                autoHideEnabled = false;
+                saveSetting("autohide", false);
+                ApplyDocked(hWnd, edge, targetMonitor, barSizeScaled);
+                return;
+            }
+            autohideRegistered = true;
+            autohideRegisteredEdge = edge;
+            autohideMonitorRect = mon;
+
+            // Compute shown / hidden / trigger rects in physical pixels.
+            shownRect = mon;
+            switch (edge)
+            {
+                case ABEdge.Left:   shownRect.right  = shownRect.left + barSizeScaled; break;
+                case ABEdge.Right:  shownRect.left   = shownRect.right - barSizeScaled; break;
+                case ABEdge.Top:    shownRect.bottom = shownRect.top + barSizeScaled; break;
+                case ABEdge.Bottom: shownRect.top    = shownRect.bottom - barSizeScaled; break;
+            }
+
+            hiddenRect = shownRect;
+            switch (edge)
+            {
+                case ABEdge.Left:
+                    hiddenRect.left  = mon.left - barSizeScaled + AutohideTriggerPx;
+                    hiddenRect.right = hiddenRect.left + barSizeScaled;
+                    break;
+                case ABEdge.Right:
+                    hiddenRect.right = mon.right + barSizeScaled - AutohideTriggerPx;
+                    hiddenRect.left  = hiddenRect.right - barSizeScaled;
+                    break;
+                case ABEdge.Top:
+                    hiddenRect.top    = mon.top - barSizeScaled + AutohideTriggerPx;
+                    hiddenRect.bottom = hiddenRect.top + barSizeScaled;
+                    break;
+                case ABEdge.Bottom:
+                    hiddenRect.bottom = mon.bottom + barSizeScaled - AutohideTriggerPx;
+                    hiddenRect.top    = hiddenRect.bottom - barSizeScaled;
+                    break;
+            }
+
+            triggerRect = mon;
+            switch (edge)
+            {
+                case ABEdge.Left:   triggerRect.right  = mon.left + AutohideTriggerPx; break;
+                case ABEdge.Right:  triggerRect.left   = mon.right - AutohideTriggerPx; break;
+                case ABEdge.Top:    triggerRect.bottom = mon.top + AutohideTriggerPx; break;
+                case ABEdge.Bottom: triggerRect.top    = mon.bottom - AutohideTriggerPx; break;
+            }
+
+            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
+            SetWindowLong(hWnd, GWL_STYLE, style);
+
+            SetWindowPos(hWnd, HWND_TOPMOST,
+                hiddenRect.left, hiddenRect.top,
+                hiddenRect.right - hiddenRect.left,
+                hiddenRect.bottom - hiddenRect.top,
+                SWP_NOACTIVATE);
+            autohideState = AutohideState.Hidden;
+            cursorLeftShownAt = DateTime.MaxValue;
+
+            StartAutohideTimer();
+        }
+
+        private void ReleaseDockedReservation(IntPtr hWnd, ABEdge edge)
+        {
+            var a = new APPBARDATA();
+            a.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+            a.hWnd = hWnd;
+            a.uEdge = (int)edge;
+            // Zero rect tells the shell our docked appbar reserves no work area.
+            a.rc.left = 0; a.rc.top = 0; a.rc.right = 0; a.rc.bottom = 0;
+            SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref a);
+        }
+
+        private void UnregisterAutohideIfNeeded()
+        {
+            if (!autohideRegistered) return;
+            StopAutohideTimer();
+            var hWnd = WindowNative.GetWindowHandle(this);
+            var a = new APPBARDATA();
+            a.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+            a.hWnd = hWnd;
+            a.uEdge = (int)autohideRegisteredEdge;
+            a.rc = autohideMonitorRect;
+            a.lParam = IntPtr.Zero;
+            SHAppBarMessage((int)AppBarMessages.ABM_SETAUTOHIDEBAREX, ref a);
+            autohideRegistered = false;
+        }
+
+        // 16 ms (~60 fps) while animating, 100 ms while idle — the idle rate only
+        // needs to be tight enough to feel responsive when the cursor hits the trigger.
+        private const int AutohideIdleTickMs   = 100;
+        private const int AutohideActiveTickMs = 16;
+
+        private void StartAutohideTimer()
+        {
+            if (autohideTimer == null)
+            {
+                autohideTimer = new DispatcherTimer();
+                autohideTimer.Tick += AutohideTick;
+            }
+            SetAutohideTimerInterval(AutohideIdleTickMs);
+            autohideTimer.Start();
+        }
+
+        private void StopAutohideTimer()
+        {
+            autohideTimer?.Stop();
+        }
+
+        private void SetAutohideTimerInterval(int ms)
+        {
+            if (autohideTimer == null) return;
+            var desired = TimeSpan.FromMilliseconds(ms);
+            if (autohideTimer.Interval != desired)
+                autohideTimer.Interval = desired;
+        }
+
+        private void AutohideTick(object sender, object e)
+        {
+            if (fullscreenAppActive)
+            {
+                if (autohideState != AutohideState.Hidden)
+                {
+                    SnapTo(hiddenRect);
+                    autohideState = AutohideState.Hidden;
+                }
+                SetAutohideTimerInterval(AutohideIdleTickMs);
+                return;
+            }
+
+            if (!GetCursorPos(out POINT p)) return;
+            var now = DateTime.UtcNow;
+            const double dur = AutohideAnimMs;
+
+            switch (autohideState)
+            {
+                case AutohideState.Hidden:
+                    if (PointInRect(p, triggerRect))
+                    {
+                        animationStart = now;
+                        autohideState = AutohideState.Showing;
+                        SetAutohideTimerInterval(AutohideActiveTickMs);
+                    }
+                    break;
+
+                case AutohideState.Showing:
+                {
+                    double t = Math.Min(1.0, (now - animationStart).TotalMilliseconds / dur);
+                    double eased = 1 - Math.Pow(1 - t, 2);
+                    ApplyInterpolatedRect(hiddenRect, shownRect, eased);
+                    if (t >= 1.0)
+                    {
+                        autohideState = AutohideState.Shown;
+                        cursorLeftShownAt = DateTime.MaxValue;
+                        SetAutohideTimerInterval(AutohideIdleTickMs);
+                    }
                     break;
                 }
 
+                case AutohideState.Shown:
+                    if (PointInRect(p, shownRect))
+                    {
+                        cursorLeftShownAt = DateTime.MaxValue;
+                    }
+                    else
+                    {
+                        if (cursorLeftShownAt == DateTime.MaxValue)
+                            cursorLeftShownAt = now;
+                        else if ((now - cursorLeftShownAt).TotalMilliseconds > AutohideHideDebounceMs)
+                        {
+                            animationStart = now;
+                            autohideState = AutohideState.Hiding;
+                            SetAutohideTimerInterval(AutohideActiveTickMs);
+                        }
+                    }
+                    break;
+
+                case AutohideState.Hiding:
+                {
+                    double t = Math.Min(1.0, (now - animationStart).TotalMilliseconds / dur);
+                    double eased = 1 - Math.Pow(1 - t, 2);
+                    ApplyInterpolatedRect(shownRect, hiddenRect, eased);
+                    if (t >= 1.0)
+                    {
+                        autohideState = AutohideState.Hidden;
+                        SetAutohideTimerInterval(AutohideIdleTickMs);
+                    }
+                    break;
+                }
             }
         }
+
+        private void ApplyInterpolatedRect(RECT from, RECT to, double t)
+        {
+            int x = (int)(from.left + (to.left - from.left) * t);
+            int y = (int)(from.top + (to.top - from.top) * t);
+            int w = from.right - from.left;
+            int h = from.bottom - from.top;
+            var hWnd = WindowNative.GetWindowHandle(this);
+            SetWindowPos(hWnd, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE);
+        }
+
+        private void SnapTo(RECT r)
+        {
+            var hWnd = WindowNative.GetWindowHandle(this);
+            SetWindowPos(hWnd, HWND_TOPMOST, r.left, r.top,
+                r.right - r.left, r.bottom - r.top, SWP_NOACTIVATE);
+        }
+
+        private static bool PointInRect(POINT p, RECT r)
+            => p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom;
 
         /******************* OnWindowMessageReceived is WndProc****************/
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
-           // Debug.WriteLine("*************Message receieved********** " + e.Message.ToString());
-            const int WM_DISPLAYCHANGE = 7;
-
+            // AppBar callback notifications (WParam identifies which ABN_ this is).
             if (e.Message.MessageId == uCallBack)
             {
-                Debug.WriteLine("**!!*****Message Main Window receieved in callback**!!**** " + e.Message.ToString() +" "+e.Message.MessageId.ToString());
                 switch (e.Message.WParam)
                 {
-                     
-                    case (int)ABNotify.ABN_POSCHANGED: //arries when bar changes to different monitor
-                        Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
-                      //  monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                      relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-                      //  monitor.WindowMessageReceived += OnWindowMessageReceived;
-
+                    case (int)ABNotify.ABN_POSCHANGED:
+                        relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
                         break;
 
+                    case (int)ABNotify.ABN_FULLSCREENAPP:
+                        fullscreenAppActive = (long)e.Message.LParam != 0;
+                        break;
+
+                    case (int)ABNotify.ABN_STATECHANGE:
+                        // System autohide/alwaystop state changed — no action needed for our bar.
+                        break;
                 }
+                return;
             }
+
+            // Explorer restart: re-register the appbar.
+            if (taskbarCreatedMsg != 0 && (int)e.Message.MessageId == taskbarCreatedMsg)
+            {
+                Debug.WriteLine("TaskbarCreated received — re-registering appbar.");
+                fBarRegistered = false;
+                autohideRegistered = false;
+                RegisterAppBar((ABEdge)loadSettings("edge"), (string)loadSettings("monitor"));
+                return;
+            }
+
             switch (e.Message.MessageId)
             {
-                case (int)AppBarMessages.ABM_WINDOWPOSCHANGED:
-                    Debug.WriteLine("window changed position changed notification " + e.Message.ToString());
-                    //relocateWindowLocation();
-                    SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+                case WM_ACTIVATE:
+                    // The AppBar contract requires forwarding WM_ACTIVATE so the shell can manage z-order.
+                    if (fBarRegistered)
+                    {
+                        var a = new APPBARDATA();
+                        a.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+                        a.hWnd = WindowNative.GetWindowHandle(this);
+                        SHAppBarMessage((int)AppBarMessages.ABM_ACTIVATE, ref a);
+                    }
                     break;
-            
-                
+
+                case WM_WINDOWPOSCHANGED:
+                    if (fBarRegistered)
+                    {
+                        var a = new APPBARDATA();
+                        a.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+                        a.hWnd = WindowNative.GetWindowHandle(this);
+                        SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref a);
+                    }
+                    break;
+
                 case WM_DISPLAYCHANGE:
-                    monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                    var seletedMon = (cbMonitor.SelectedItem as String);
-
-                    Debug.WriteLine("Monitor attached ");
+                    var selectedMon = cbMonitor.SelectedItem as string;
                     cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
-                    //relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-
-
-                    MonitorList = null;
                     MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
+                    cbMonitor.SelectedItem = selectedMon;
                     cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
-                    cbMonitor.SelectedItem = seletedMon;
-                    monitor.WindowMessageReceived += OnWindowMessageReceived;
-
+                    // Rebuild our registration on the current edge/monitor (may have been disconnected).
+                    if (fBarRegistered) relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
                     break;
             }
         }
@@ -409,20 +631,33 @@ namespace AppAppBar3
 #region shortcuts
         private async void loadShortCuts()
         {
+            var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt";
+            if (!System.IO.File.Exists(path)) return;
+
+            string[] lines;
             try
             {
-                using (StreamReader sr = new StreamReader(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt"))
-                    while (!sr.EndOfStream)
-                    {
-                        var exePath = sr.ReadLine();
-                        StorageFile file = await StorageFile.GetFileFromPathAsync(exePath);
-                        Debug.WriteLine("path of shortcut readline " + exePath + " " + file.FileType);
-                        await createShortCut(file, exePath);
-                    }
+                lines = System.IO.File.ReadAllLines(path);
             }
             catch (Exception error)
             {
-                Debug.WriteLine(error.Message);
+                Debug.WriteLine("Failed to read shortcuts.txt: " + error.Message);
+                return;
+            }
+
+            foreach (var exePath in lines)
+            {
+                if (string.IsNullOrWhiteSpace(exePath)) continue;
+                try
+                {
+                    StorageFile file = await StorageFile.GetFileFromPathAsync(exePath);
+                    await createShortCut(file, exePath);
+                }
+                catch (Exception error)
+                {
+                    // One bad entry (missing file, permission denied, etc.) shouldn't abort the rest.
+                    Debug.WriteLine($"Skipping shortcut '{exePath}': {error.Message}");
+                }
             }
         }
 
@@ -515,10 +750,6 @@ namespace AppAppBar3
             }
         }
         #endregion
-        private void UnregisterAppBar()
-        {
-            RegisterBar(ABEdge.Top, cbMonitor.SelectedItem as string);
-        }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
@@ -564,7 +795,7 @@ namespace AppAppBar3
             {
                 webWindow.Close();
             }
-           
+
             UnregisterAppBar();
             this.Close();
         }
@@ -633,14 +864,8 @@ namespace AppAppBar3
 
         private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
-            Debug.WriteLine("Monitor selection changed");
             relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-            edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
-            
             selectedItemsText = (cbMonitor.SelectedItem as String);
-               
-                Debug.WriteLine("Selected Monitor Text**********" + (cbMonitor.SelectedItem as string));
         }
 
 
@@ -774,15 +999,21 @@ namespace AppAppBar3
 
         private void appbarWindow_Closed(object sender, WindowEventArgs args)
         {
-            foreach(var window in OpenWindows)
+            // Safety net: ensure appbar/autohide registrations are released even if
+            // the window is closed via an OS-level action (not the Close button).
+            UnregisterAppBar();
+
+            if (monitor != null)
             {
-                if(window != null)
-                {
-                    window.Close();
-                }
-                
+                monitor.WindowMessageReceived -= OnWindowMessageReceived;
+                monitor.Dispose();
+                monitor = null;
             }
 
+            foreach (var window in OpenWindows)
+            {
+                if (window != null) window.Close();
+            }
         }
 
 

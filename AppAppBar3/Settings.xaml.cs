@@ -21,8 +21,7 @@ namespace AppAppBar3
     using static NativeMethods;
     public sealed partial class Settings : WinUIEx.WindowEx
     {
-       
-        public const int ABN_POSCHANGED = 1;
+
         public int appBarCallBack;
         WindowMessageMonitor monitor;
         MainWindow parentWindow;
@@ -55,6 +54,15 @@ namespace AppAppBar3
             cbEdgeSettings.SelectedItem = (ABEdge)loadSettings("edge");
 
             loadOnStartupCheckBox.IsChecked = loadOnStartup("LoadOnStartup");
+
+            var autohideSetting = loadSettings("autohide");
+            autohideCheckBox.IsChecked = autohideSetting is bool b && b;
+        }
+
+        private void autohideCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            saveSetting("autohide", autohideCheckBox.IsChecked == true);
+            parentWindow.restartAppBar();
         }
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
@@ -65,22 +73,16 @@ namespace AppAppBar3
 
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
-            const int WM_DISPLAYCHANGE = 7;
             Debug.WriteLine("AppBar call back " +appBarCallBack.ToString());
             Debug.WriteLine("*************Settings Window Message receieved********** " + e.Message.MessageId.ToString());
 
             if (e.Message.MessageId == appBarCallBack)
             {
-                // Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
                 switch (e.Message.WParam)
                 {
 
-                    case (int)ABN_POSCHANGED:
+                    case (int)ABNotify.ABN_POSCHANGED:
                          Debug.WriteLine("*************Message callback recieved in Settings Window********** " + e.Message.ToString());
-                        //  monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                        // relocateWindowLocation();
-                        //  monitor.WindowMessageReceived += OnWindowMessageReceived;
-
                         break;
 
                 }
@@ -89,13 +91,7 @@ namespace AppAppBar3
             {
 
                 case WM_DISPLAYCHANGE:
-                    monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                   
                     Debug.WriteLine("Monitor attached ");
-
-
-                    monitor.WindowMessageReceived += OnWindowMessageReceived;
-
                     break;
                // case (int)AppBarMessages.ABM_WINDOWPOSCHANGED:
                     //Debug.WriteLine("window changed position changed notification " + e.Message.ToString());

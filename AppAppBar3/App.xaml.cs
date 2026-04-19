@@ -33,6 +33,23 @@ namespace AppAppBar3
         public App()
         {
             this.InitializeComponent();
+
+            // Catch-all for otherwise-fatal exceptions on the UI thread.
+            this.UnhandledException += OnUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                System.Diagnostics.Debug.WriteLine("[AppDomain] Unhandled: " + e.ExceptionObject);
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine("[Task] Unobserved: " + e.Exception);
+                e.SetObserved();
+            };
+        }
+
+        private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine($"[XAML] Unhandled: {e.Message}{Environment.NewLine}{e.Exception}");
+            // Keep the app alive after reporting — a stray handler exception shouldn't kill the appbar.
+            e.Handled = true;
         }
 
         /// <summary>

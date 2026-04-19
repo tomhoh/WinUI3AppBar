@@ -36,6 +36,9 @@ namespace AppAppBar3
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("user32.dll")]
+        public static extern bool GetCursorPos(out POINT lpPoint);
+
         [DllImport("Shcore.dll")]
         public static extern IntPtr GetDpiForMonitor([In] IntPtr hmonitor, [In] DpiType dpiType, [Out] out uint dpiX, [Out] out uint dpiY);
     
@@ -103,18 +106,43 @@ namespace AppAppBar3
         //data structure for setting autohide or show on taskbar
         public enum AppBarMessages : int
         {
-            ABM_NEW = 0,
-            ABM_REMOVE,
-            ABM_QUERYPOS,
-            ABM_SETPOS,
-            ABM_GETSTATE,
-            ABM_GETTASKBARPOS,
-            ABM_ACTIVATE,
-            ABM_GETAUTOHIDEBAR,
-            ABM_SETAUTOHIDEBAR,
-            ABM_WINDOWPOSCHANGED = 0x0047,
-            ABM_WINDOWPOSCHANGING = 0x0046,
-            ABM_SETSTATE
+            ABM_NEW              = 0x00,
+            ABM_REMOVE           = 0x01,
+            ABM_QUERYPOS         = 0x02,
+            ABM_SETPOS           = 0x03,
+            ABM_GETSTATE         = 0x04,
+            ABM_GETTASKBARPOS    = 0x05,
+            ABM_ACTIVATE         = 0x06,
+            ABM_GETAUTOHIDEBAR   = 0x07,
+            ABM_SETAUTOHIDEBAR   = 0x08,
+            ABM_WINDOWPOSCHANGED = 0x09,
+            ABM_SETSTATE         = 0x0A,
+            ABM_GETAUTOHIDEBAREX = 0x0B,
+            ABM_SETAUTOHIDEBAREX = 0x0C,
+        }
+
+        public const int ABS_AUTOHIDE    = 0x1;
+        public const int ABS_ALWAYSONTOP = 0x2;
+
+        public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        public const uint SWP_NOACTIVATE = 0x0010;
+        public const uint SWP_NOSIZE     = 0x0001;
+        public const uint SWP_NOZORDER   = 0x0004;
+
+        // Standard Win32 window messages used by the AppBar contract.
+        public const int WM_ACTIVATE         = 0x0006;
+        public const int WM_WINDOWPOSCHANGED = 0x0047;
+        public const int WM_DISPLAYCHANGE    = 0x007E;
+
+        /// <summary>
+        /// Logs a Win32 error from the last P/Invoke that used SetLastError=true.
+        /// Call immediately after the failing call; subsequent managed work can clobber the last-error TLS slot.
+        /// </summary>
+        public static void LogWin32Error(string context)
+        {
+            int err = Marshal.GetLastWin32Error();
+            if (err != 0)
+                System.Diagnostics.Debug.WriteLine($"[Win32] {context} failed: code={err} ({new System.ComponentModel.Win32Exception(err).Message})");
         }
         public enum ABNotify : int
         {

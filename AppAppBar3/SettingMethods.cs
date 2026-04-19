@@ -19,6 +19,7 @@ namespace AppAppBar3
                 saveSetting("monitor", @"\\.\DISPLAY1");
                 saveSetting("LoadOnStartup", true);
                 saveSetting("edge", 1);
+                saveSetting("autohide", false);
             }
         }
         
