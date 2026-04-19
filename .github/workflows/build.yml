@@ -122,6 +122,7 @@ jobs:
           # symbols), and the raw .cer from the MSIX build (we use our own ci-cert).
           path: |
             publish/msix/*_Test/**/*.msix
+            publish/msix/*_Test/*.cer
             publish/msix/*_Test/Install.ps1
             publish/msix/*_Test/Add-AppDevPackage.ps1
             publish/msix/*_Test/Add-AppDevPackage.resources/en-US/**
