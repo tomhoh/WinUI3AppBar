@@ -13,6 +13,9 @@ Global
 		Release|ARM64 = Release|ARM64
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
+		x64test|ARM64 = x64test|ARM64
+		x64test|x64 = x64test|x64
+		x64test|x86 = x64test|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{EABBC16C-D079-4DC8-A479-07FB13A49602}.Debug|ARM64.ActiveCfg = Debug|ARM64
@@ -33,6 +36,15 @@ Global
 		{EABBC16C-D079-4DC8-A479-07FB13A49602}.Release|x86.ActiveCfg = Release|x86
 		{EABBC16C-D079-4DC8-A479-07FB13A49602}.Release|x86.Build.0 = Release|x86
 		{EABBC16C-D079-4DC8-A479-07FB13A49602}.Release|x86.Deploy.0 = Release|x86
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|ARM64.ActiveCfg = x64test|ARM64
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|ARM64.Build.0 = x64test|ARM64
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|ARM64.Deploy.0 = x64test|ARM64
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|x64.ActiveCfg = x64test|x64
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|x64.Build.0 = x64test|x64
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|x64.Deploy.0 = x64test|x64
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|x86.ActiveCfg = x64test|x86
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|x86.Build.0 = x64test|x86
+		{EABBC16C-D079-4DC8-A479-07FB13A49602}.x64test|x86.Deploy.0 = x64test|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
