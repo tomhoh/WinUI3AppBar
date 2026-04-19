@@ -114,7 +114,7 @@ namespace AppAppBar3
         private DispatcherTimer autohideTimer;
         private const int AutohideAnimMs = 200;
         private const int AutohideHideDebounceMs = 300;
-        private const int AutohideTriggerPx = 2;
+        private const int AutohideTriggerPxUnscaled = 2;
         public MainWindow()
         {
          
@@ -254,7 +254,7 @@ namespace AppAppBar3
 
             int theBarSize = (loadSettings("bar_size") as int?) ?? 50;
             double scaleFactor = targetMonitor.scale > 0 ? targetMonitor.scale : 1.0;
-            int barSizeScaled = (int)(theBarSize * scaleFactor);
+            int barSizeScaled = (int)Math.Round(theBarSize * scaleFactor);
 
             if (!autoHideEnabled)
             {
@@ -274,23 +274,19 @@ namespace AppAppBar3
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
             abd.uEdge = (int)edge;
-            abd.rc.top = targetMonitor.WorkRect.top;
-            abd.rc.bottom = targetMonitor.WorkRect.bottom;
-            abd.rc.left = targetMonitor.WorkRect.left;
-            abd.rc.right = targetMonitor.WorkRect.right;
 
-            // Query the system for an approved size and position.
+            // Start with the full monitor rect and pre-apply the desired thickness on the
+            // dock side before ABM_QUERYPOS — this matches the MSDN AppBar sample. Passing
+            // the full work area as the proposed rect makes the shell shrink an oversized
+            // proposal, and it does so asymmetrically for Left vs Right.
+            abd.rc = targetMonitor.MonitorRect;
+            ApplyThickness(ref abd.rc, edge, barSizeScaled);
+
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
-
-            switch (abd.uEdge)
-            {
-                case (int)ABEdge.Left:   abd.rc.right  = abd.rc.left + barSizeScaled; break;
-                case (int)ABEdge.Right:  abd.rc.left   = abd.rc.right - barSizeScaled; break;
-                case (int)ABEdge.Top:    abd.rc.bottom = abd.rc.top + barSizeScaled; break;
-                case (int)ABEdge.Bottom: abd.rc.top    = abd.rc.bottom - barSizeScaled; break;
-            }
+            ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
+            ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
@@ -303,6 +299,17 @@ namespace AppAppBar3
             }
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+        }
+
+        private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness)
+        {
+            switch (edge)
+            {
+                case ABEdge.Left:   rc.right  = rc.left + thickness; break;
+                case ABEdge.Right:  rc.left   = rc.right - thickness; break;
+                case ABEdge.Top:    rc.bottom = rc.top + thickness; break;
+                case ABEdge.Bottom: rc.top    = rc.bottom - thickness; break;
+            }
         }
 
         private void ApplyAutohide(IntPtr hWnd, ABEdge edge, Monitor targetMonitor, int barSizeScaled)
@@ -342,23 +349,28 @@ namespace AppAppBar3
                 case ABEdge.Bottom: shownRect.top    = shownRect.bottom - barSizeScaled; break;
             }
 
+            // Scale the trigger strip by monitor DPI so the hit area stays usable on
+            // high-DPI displays (2 physical px is nearly invisible at 200%).
+            double scale = targetMonitor.scale > 0 ? targetMonitor.scale : 1.0;
+            int triggerPx = Math.Max(1, (int)Math.Round(AutohideTriggerPxUnscaled * scale));
+
             hiddenRect = shownRect;
             switch (edge)
             {
                 case ABEdge.Left:
-                    hiddenRect.left  = mon.left - barSizeScaled + AutohideTriggerPx;
+                    hiddenRect.left  = mon.left - barSizeScaled + triggerPx;
                     hiddenRect.right = hiddenRect.left + barSizeScaled;
                     break;
                 case ABEdge.Right:
-                    hiddenRect.right = mon.right + barSizeScaled - AutohideTriggerPx;
+                    hiddenRect.right = mon.right + barSizeScaled - triggerPx;
                     hiddenRect.left  = hiddenRect.right - barSizeScaled;
                     break;
                 case ABEdge.Top:
-                    hiddenRect.top    = mon.top - barSizeScaled + AutohideTriggerPx;
+                    hiddenRect.top    = mon.top - barSizeScaled + triggerPx;
                     hiddenRect.bottom = hiddenRect.top + barSizeScaled;
                     break;
                 case ABEdge.Bottom:
-                    hiddenRect.bottom = mon.bottom + barSizeScaled - AutohideTriggerPx;
+                    hiddenRect.bottom = mon.bottom + barSizeScaled - triggerPx;
                     hiddenRect.top    = hiddenRect.bottom - barSizeScaled;
                     break;
             }
@@ -366,10 +378,10 @@ namespace AppAppBar3
             triggerRect = mon;
             switch (edge)
             {
-                case ABEdge.Left:   triggerRect.right  = mon.left + AutohideTriggerPx; break;
-                case ABEdge.Right:  triggerRect.left   = mon.right - AutohideTriggerPx; break;
-                case ABEdge.Top:    triggerRect.bottom = mon.top + AutohideTriggerPx; break;
-                case ABEdge.Bottom: triggerRect.top    = mon.bottom - AutohideTriggerPx; break;
+                case ABEdge.Left:   triggerRect.right  = mon.left + triggerPx; break;
+                case ABEdge.Right:  triggerRect.left   = mon.right - triggerPx; break;
+                case ABEdge.Top:    triggerRect.bottom = mon.top + triggerPx; break;
+                case ABEdge.Bottom: triggerRect.top    = mon.bottom - triggerPx; break;
             }
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
@@ -939,79 +951,57 @@ namespace AppAppBar3
 
         void DockToAppBar(Window webW)
         {
-            //IntPtr whWnd = WindowNative.GetWindowHandle(webW);
-            // WindowId windowId = Win32Interop.GetWindowIdFromWindow(whWnd);
-            // var wappWindow = AppWindow.GetFromWindowId(windowId);
             var wappWindow = webW.GetAppWindow();
+            bool isSettings = wappWindow.Title == "Settings";
 
-            int newWindowWidth = 0;// = screenWidth;
-            int newWindowHeight = 0;// = screenHeight - 100;
-            int newWindowX = 0;//= (int)(taskbarRect.X);
-            int newWindowY = 0;//= 100;
-            foreach (var monitor in monitorInfo)
-                if (monitor.MonitorName == cbMonitor.SelectedItem as string)
-                {
+            Monitor mon = null;
+            foreach (var m in monitorInfo)
+                if (m.MonitorName == cbMonitor.SelectedItem as string) { mon = m; break; }
+            if (mon == null) return;
 
-                var workarea = monitor.WorkRect;
-            //var workarea = getMonitorWorkRect(cbMonitor.SelectedItem as string);
+            int x, y, w, h;
 
-            if (Edge == ABEdge.Top)
+            if (isSettings)
             {
-                newWindowWidth = workarea.right - workarea.left;
-                newWindowHeight = workarea.bottom;
-                newWindowX = workarea.left;
-                newWindowY = workarea.top;
-                if (wappWindow.Title == "Settings")
-                {
-                    newWindowWidth = wappWindow.Size.Width;
-                    newWindowHeight = wappWindow.Size.Height;
-                    newWindowX = (int)((appWindow.Size.Width / 2) - (wappWindow.Size.Width / 2));
-                }
+                // Settings docks adjacent to the main appbar — it keeps its own size and
+                // sits just outside the bar's dock edge, centered along the bar's length.
+                w = wappWindow.Size.Width;
+                h = wappWindow.Size.Height;
+                var abPos = appWindow.Position;
+                var abSize = appWindow.Size;
 
-            }
-            else if (Edge == ABEdge.Bottom)
-            {
-                newWindowWidth = workarea.right - workarea.left;
-                newWindowHeight = workarea.bottom;
-                newWindowX = workarea.left;
-                newWindowY = workarea.top;
-                if (wappWindow.Title == "Settings")
+                switch (Edge)
                 {
-                    newWindowWidth = wappWindow.Size.Width;
-                    newWindowHeight = wappWindow.Size.Height;
-                    newWindowX = (int)((appWindow.Size.Width / 2) - (wappWindow.Size.Width / 2));
-                }
-            }
-            else if (Edge == ABEdge.Left)
-            {
-                newWindowWidth = workarea.right - workarea.left;
-                newWindowHeight = workarea.bottom;
-                newWindowX = workarea.left;
-                newWindowY = workarea.top;
-                if (wappWindow.Title == "Settings")
-                {
-                    newWindowWidth = wappWindow.Size.Width;
-                    newWindowHeight = wappWindow.Size.Height;
-                    newWindowY = (int)((appWindow.Size.Height / 2) - (wappWindow.Size.Height / 2));
-                }
-
-            }
-            else if (Edge == ABEdge.Right)
-            {
-                newWindowWidth = workarea.right - workarea.left;
-                newWindowHeight = workarea.bottom;
-                newWindowX = workarea.left;
-                newWindowY = workarea.top;
-                if (wappWindow.Title == "Settings")
-                {
-                    newWindowWidth = wappWindow.Size.Width;
-                    newWindowHeight = wappWindow.Size.Height;
-                    newWindowY = (int)((appWindow.Size.Height / 2) - (wappWindow.Size.Height / 2));
+                    case ABEdge.Top:
+                        x = abPos.X + (abSize.Width - w) / 2;
+                        y = abPos.Y + abSize.Height;
+                        break;
+                    case ABEdge.Bottom:
+                        x = abPos.X + (abSize.Width - w) / 2;
+                        y = abPos.Y - h;
+                        break;
+                    case ABEdge.Left:
+                        x = abPos.X + abSize.Width;
+                        y = abPos.Y + (abSize.Height - h) / 2;
+                        break;
+                    case ABEdge.Right:
+                    default:
+                        x = abPos.X - w;
+                        y = abPos.Y + (abSize.Height - h) / 2;
+                        break;
                 }
             }
+            else
+            {
+                // Web window fills the work area of the selected monitor.
+                var workarea = mon.WorkRect;
+                x = workarea.left;
+                y = workarea.top;
+                w = workarea.right - workarea.left;
+                h = workarea.bottom - workarea.top;
+            }
 
-            webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(newWindowX, newWindowY, newWindowWidth, newWindowHeight));
-        }
+            webW.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, w, h));
         }
 
         private void appbarWindow_Closed(object sender, WindowEventArgs args)

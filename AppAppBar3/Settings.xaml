@@ -10,11 +10,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="Settings"
-    Height="400"
+    Height="480"
     Width="300"
     IsShownInSwitchers="False">
 
-    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" Height="400" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
+    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" Height="480" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
         
           
         <TextBlock Margin="10,10,0,0">Startup Edge:</TextBlock>
