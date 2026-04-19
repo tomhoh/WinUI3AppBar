@@ -623,6 +623,32 @@ namespace AppAppBar3
         }
 
 #region shortcuts
+        // Late-bound COM (WScript.Shell) to resolve .lnk → target path. Avoids a
+        // type-library-imported COMReference, which tlbimp can't process under
+        // `dotnet publish` (the .NET Core MSBuild — see MSB4803).
+        private static string ResolveShortcutTarget(string lnkPath)
+        {
+            Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null) return null;
+            dynamic shell = null, shortcut = null;
+            try
+            {
+                shell = Activator.CreateInstance(shellType);
+                shortcut = shell.CreateShortcut(lnkPath);
+                return (string)shortcut.TargetPath;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("ResolveShortcutTarget failed: " + ex.Message);
+                return null;
+            }
+            finally
+            {
+                if (shortcut != null) Marshal.FinalReleaseComObject(shortcut);
+                if (shell != null) Marshal.FinalReleaseComObject(shell);
+            }
+        }
+
         private async void loadShortCuts()
         {
             var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\shortcuts.txt";
@@ -671,9 +697,7 @@ namespace AppAppBar3
                 Debug.WriteLine("File Type = " + type);
                 if (type == ".lnk")
                 {
-                    IWshRuntimeLibrary.IWshShell wsh = new IWshRuntimeLibrary.WshShellClass();
-                    IWshRuntimeLibrary.IWshShortcut sc = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(path);
-                    path = sc.TargetPath;
+                    path = ResolveShortcutTarget(path) ?? path;
                 }
                 await createShortCut(file, path);
                 try
