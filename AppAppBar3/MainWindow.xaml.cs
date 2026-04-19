@@ -22,7 +22,6 @@ using WinUIEx;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Windows.Data.Xml.Dom;
-using Microsoft.Win32;
 
 
 
