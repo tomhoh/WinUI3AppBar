@@ -75,18 +75,24 @@ jobs:
       # -----------------------------------------------------------------------
       # Option B — Unpackaged, runtime-dependent. Target machine needs the
       # Windows App Runtime 1.5 installer (https://aka.ms/windowsappsdk).
+      #
+      # Uses msbuild.exe (from VS) rather than `dotnet publish` because the
+      # Windows App SDK 1.5 targets reference Microsoft.Build.Packaging.Pri.Tasks.dll,
+      # which ships with Visual Studio — not with the standalone dotnet SDK
+      # (MSB4062 otherwise).
       # -----------------------------------------------------------------------
       - name: Build unpackaged runtime-dependent (Option B)
         shell: pwsh
         run: |
-          dotnet publish $env:Solution `
-            -c $env:Configuration `
-            -r win-x64 `
-            --self-contained false `
-            -p:WindowsPackageType=None `
-            -p:Platform=$env:Platform `
-            -p:PublishReadyToRun=false `
-            -o publish\unpackaged-runtime-dep
+          msbuild $env:Solution `
+            /restore `
+            /t:Publish `
+            /p:Configuration=$env:Configuration `
+            /p:Platform=$env:Platform `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=false `
+            /p:WindowsPackageType=None `
+            /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-runtime-dep\\"
 
       # -----------------------------------------------------------------------
       # Option C — Unpackaged, fully self-contained. ~100 MB, portable, no prereqs.
@@ -94,15 +100,16 @@ jobs:
       - name: Build unpackaged self-contained (Option C)
         shell: pwsh
         run: |
-          dotnet publish $env:Solution `
-            -c $env:Configuration `
-            -r win-x64 `
-            --self-contained true `
-            -p:WindowsPackageType=None `
-            -p:WindowsAppSDKSelfContained=true `
-            -p:Platform=$env:Platform `
-            -p:PublishReadyToRun=false `
-            -o publish\unpackaged-self-contained
+          msbuild $env:Solution `
+            /restore `
+            /t:Publish `
+            /p:Configuration=$env:Configuration `
+            /p:Platform=$env:Platform `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=true `
+            /p:WindowsAppSDKSelfContained=true `
+            /p:WindowsPackageType=None `
+            /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained\\"
 
       - name: Upload MSIX artifact
         if: steps.msix.outcome == 'success'
