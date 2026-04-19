@@ -68,6 +68,7 @@ jobs:
             /p:PackageCertificateThumbprint="${{ steps.cert.outputs.thumbprint }}" `
             /p:PackageCertificatePassword="$env:PfxPassword" `
             /p:GenerateAppxPackageOnBuild=true `
+            /p:GenerateAppInstallerFile=false `
             /p:AppxBundle=Never `
             /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxPackageDir="$env:GITHUB_WORKSPACE\publish\msix\\"
@@ -116,8 +117,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AppAppBar3-MSIX-x64
+          # Sideload-ready contents only — excludes .appinstaller (invalid auto-update
+          # manifest from the stale AppInstallerUri in the csproj), .appxsym (debug
+          # symbols), and the raw .cer from the MSIX build (we use our own ci-cert).
           path: |
-            publish/msix/**
+            publish/msix/*_Test/**/*.msix
+            publish/msix/*_Test/Install.ps1
+            publish/msix/*_Test/Add-AppDevPackage.ps1
+            publish/msix/*_Test/Add-AppDevPackage.resources/en-US/**
             AppAppBar3/ci-cert.cer
           if-no-files-found: warn
 
