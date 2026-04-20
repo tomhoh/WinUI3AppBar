@@ -1,5 +1,7 @@
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
@@ -115,6 +117,16 @@ namespace AppAppBar3
         private const int AutohideAnimMs = 200;
         private const int AutohideHideDebounceMs = 300;
         private const int AutohideTriggerPxUnscaled = 2;
+
+        // --- Drag-resize state (left-drag on the inner-edge grip adjusts thickness) ---
+        private bool isDragResizing;
+        private POINT dragStartPt;
+        private int dragStartBarSize;
+        private double dragMonitorScale = 1.0;
+        private int lastPreviewedBarSize;
+        private const int MinBarSize = 20;
+        private const int MaxBarSize = 500;
+
         public MainWindow()
         {
 
@@ -199,6 +211,7 @@ namespace AppAppBar3
                 }
                 edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
                 cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
+                UpdateResizeGrip();
                 loadShortCuts();
 
                 
@@ -919,7 +932,7 @@ namespace AppAppBar3
         {
             Debug.WriteLine("This is the edge var "+Edge);
             
-           
+
               ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
             if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
             {
@@ -932,12 +945,141 @@ namespace AppAppBar3
                 stPanel.Orientation = Orientation.Vertical;
             }
 
+            UpdateResizeGrip();
+
            
             if (webWindow != null)
             {
                 DockToAppBar(webWindow);
             }
         }
+        private void Grip_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            var props = e.GetCurrentPoint(resizeGrip).Properties;
+            if (!props.IsLeftButtonPressed) return;
+            // Autohide uses a different geometry; skip drag-resize in that mode.
+            if (autoHideEnabled) return;
+            if (edgeMonitor.SelectedItem == null || cbMonitor.SelectedItem == null) return;
+            if (!GetCursorPos(out dragStartPt)) return;
+
+            dragStartBarSize = (loadSettings("bar_size") as int?) ?? 50;
+            Monitor mon = null;
+            var monName = cbMonitor.SelectedItem as string;
+            foreach (var m in MonitorList)
+                if (m.MonitorName == monName) { mon = m; break; }
+            dragMonitorScale = (mon != null && mon.scale > 0) ? mon.scale : 1.0;
+            lastPreviewedBarSize = dragStartBarSize;
+
+            isDragResizing = resizeGrip.CapturePointer(e.Pointer);
+            e.Handled = isDragResizing;
+        }
+
+        private void Grip_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            if (!isDragResizing) return;
+            if (!GetCursorPos(out POINT p)) return;
+
+            int dxPx = p.x - dragStartPt.x;
+            int dyPx = p.y - dragStartPt.y;
+            double deltaDip;
+            switch ((ABEdge)edgeMonitor.SelectedItem)
+            {
+                case ABEdge.Left:   deltaDip =  dxPx / dragMonitorScale; break;
+                case ABEdge.Right:  deltaDip = -dxPx / dragMonitorScale; break;
+                case ABEdge.Top:    deltaDip =  dyPx / dragMonitorScale; break;
+                case ABEdge.Bottom: deltaDip = -dyPx / dragMonitorScale; break;
+                default: return;
+            }
+            int newSize = Math.Clamp((int)Math.Round(dragStartBarSize + deltaDip), MinBarSize, MaxBarSize);
+            if (newSize == lastPreviewedBarSize) return;
+            lastPreviewedBarSize = newSize;
+            PreviewBarSize(newSize);
+            e.Handled = true;
+        }
+
+        private void Grip_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            if (!isDragResizing) return;
+            isDragResizing = false;
+            resizeGrip.ReleasePointerCaptures();
+            CommitDrag();
+            e.Handled = true;
+        }
+
+        private void Grip_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+        {
+            if (!isDragResizing) return;
+            isDragResizing = false;
+            CommitDrag();
+        }
+
+        private void CommitDrag()
+        {
+            if (lastPreviewedBarSize == dragStartBarSize) return;
+            saveSetting("bar_size", lastPreviewedBarSize);
+            // Commit the new size through the AppBar contract so the shell
+            // updates its work-area reservation to match the previewed rect.
+            ABSetPos((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
+        }
+
+        // Repositions the grip against the inner edge of the bar (opposite the dock edge)
+        // and swaps the cursor between horizontal and vertical two-way arrows.
+        private void UpdateResizeGrip()
+        {
+            if (resizeGrip == null || edgeMonitor.SelectedItem == null) return;
+            const double gripThickness = 6;
+            switch ((ABEdge)edgeMonitor.SelectedItem)
+            {
+                case ABEdge.Left:
+                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Right;
+                    resizeGrip.VerticalAlignment = VerticalAlignment.Stretch;
+                    resizeGrip.Width = gripThickness;
+                    resizeGrip.Height = double.NaN;
+                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
+                    break;
+                case ABEdge.Right:
+                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Left;
+                    resizeGrip.VerticalAlignment = VerticalAlignment.Stretch;
+                    resizeGrip.Width = gripThickness;
+                    resizeGrip.Height = double.NaN;
+                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
+                    break;
+                case ABEdge.Top:
+                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    resizeGrip.VerticalAlignment = VerticalAlignment.Bottom;
+                    resizeGrip.Width = double.NaN;
+                    resizeGrip.Height = gripThickness;
+                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
+                    break;
+                case ABEdge.Bottom:
+                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    resizeGrip.VerticalAlignment = VerticalAlignment.Top;
+                    resizeGrip.Width = double.NaN;
+                    resizeGrip.Height = gripThickness;
+                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
+                    break;
+            }
+        }
+
+        private void PreviewBarSize(int newBarSize)
+        {
+            Monitor target = null;
+            var monName = cbMonitor.SelectedItem as string;
+            foreach (var m in MonitorList)
+                if (m.MonitorName == monName) { target = m; break; }
+            if (target == null) return;
+
+            double scale = target.scale > 0 ? target.scale : 1.0;
+            int thicknessPx = (int)Math.Round(newBarSize * scale);
+            RECT rc = target.MonitorRect;
+            ApplyThickness(ref rc, (ABEdge)edgeMonitor.SelectedItem, thicknessPx);
+
+            var hWnd = WindowNative.GetWindowHandle(this);
+            SetWindowPos(hWnd, IntPtr.Zero, rc.left, rc.top,
+                rc.right - rc.left, rc.bottom - rc.top,
+                SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSENDCHANGING);
+        }
+
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
            Edge = ((ABEdge)edgeMonitor.SelectedItem);

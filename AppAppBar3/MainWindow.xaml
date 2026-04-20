@@ -17,6 +17,7 @@
     Closed="appbarWindow_Closed">
 
 
+    <Grid x:Name="rootGrid" Background="{ThemeResource SystemChromeMediumLowColor}">
     <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
         
             <VariableSizedWrapGrid Orientation="Horizontal"  x:Name="VariableGrid" AllowDrop="False" DragOver="Grid_DragOver" Drop="Grid_Drop" CanDrag="True" MaximumRowsOrColumns="120" ItemHeight="50" ItemWidth="100" HorizontalAlignment="Left" HorizontalChildrenAlignment="Left" >
@@ -48,9 +49,20 @@
 
             </CommandBar>
         </VariableSizedWrapGrid>
-            
+
         </StackPanel>
-        
+
+        <local:ResizeGrip x:Name="resizeGrip"
+                          Background="#40000000"
+                          Width="6"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Stretch"
+                          PointerPressed="Grip_PointerPressed"
+                          PointerMoved="Grip_PointerMoved"
+                          PointerReleased="Grip_PointerReleased"
+                          PointerCaptureLost="Grip_PointerCaptureLost"/>
+    </Grid>
+
 
 
 
