@@ -117,8 +117,14 @@ namespace AppAppBar3
         private const int AutohideTriggerPxUnscaled = 2;
         public MainWindow()
         {
-         
+
             this.InitializeComponent();
+            // Override the XAML MinWidth/MinHeight floor — WinUIEx.WindowEx's
+            // WM_WINDOWPOSCHANGING interceptor was clamping our Left/Right bar up to
+            // ~132 DIPs even when we asked for 50, because MinWidth=25 in XAML wasn't
+            // the actual floor in practice.
+            this.MinWidth = 1;
+            this.MinHeight = 1;
             this.Activated += OnActivated;
             this.AppWindow.IsShownInSwitchers = false;
             monitorInfo = GetMonitorsInfo();
@@ -312,12 +318,15 @@ namespace AppAppBar3
 
             int moveW = abd.rc.right - abd.rc.left;
             int moveH = abd.rc.bottom - abd.rc.top;
-            string moveLine = $"[ApplyDocked] MoveWindow({abd.rc.left},{abd.rc.top},{moveW},{moveH})";
+            string moveLine = $"[ApplyDocked] SetWindowPos({abd.rc.left},{abd.rc.top},{moveW},{moveH})";
             Debug.WriteLine(moveLine);
             SettingMethods.FileLog(moveLine);
-            if (!MoveWindow(hWnd, abd.rc.left, abd.rc.top, moveW, moveH, true))
+            // SWP_NOSENDCHANGING skips WM_WINDOWPOSCHANGING, which WinUIEx.WindowEx was
+            // intercepting to clamp our width up to ~132 DIPs (its content/MinWidth floor).
+            if (!SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, moveW, moveH,
+                SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSENDCHANGING))
             {
-                LogWin32Error("MoveWindow (docked)");
+                LogWin32Error("SetWindowPos (docked)");
             }
 
             if (GetWindowRect(hWnd, out RECT actual))
