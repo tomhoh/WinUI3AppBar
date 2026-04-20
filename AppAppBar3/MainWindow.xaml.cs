@@ -270,6 +270,12 @@ namespace AppAppBar3
         {
             StopAutohideTimer();
 
+            Debug.WriteLine($"[ApplyDocked] edge={edge} barSizeScaled={barSizeScaled} " +
+                $"monitorScale={targetMonitor.scale} MonitorRect=({targetMonitor.MonitorRect.left},{targetMonitor.MonitorRect.top})-" +
+                $"({targetMonitor.MonitorRect.right},{targetMonitor.MonitorRect.bottom}) " +
+                $"WorkRect=({targetMonitor.WorkRect.left},{targetMonitor.WorkRect.top})-" +
+                $"({targetMonitor.WorkRect.right},{targetMonitor.WorkRect.bottom})");
+
             var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
@@ -281,22 +287,35 @@ namespace AppAppBar3
             // proposal, and it does so asymmetrically for Left vs Right.
             abd.rc = targetMonitor.MonitorRect;
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
+            Debug.WriteLine($"[ApplyDocked] pre-QUERYPOS rc=({abd.rc.left},{abd.rc.top})-({abd.rc.right},{abd.rc.bottom}) w={abd.rc.right - abd.rc.left}");
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
+            Debug.WriteLine($"[ApplyDocked] post-QUERYPOS rc=({abd.rc.left},{abd.rc.top})-({abd.rc.right},{abd.rc.bottom}) w={abd.rc.right - abd.rc.left}");
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
+            Debug.WriteLine($"[ApplyDocked] post-SETPOS rc=({abd.rc.left},{abd.rc.top})-({abd.rc.right},{abd.rc.bottom}) w={abd.rc.right - abd.rc.left}");
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hWnd, GWL_STYLE, style);
+            // SWP_FRAMECHANGED commits the style change and forces WM_NCCALCSIZE before the
+            // move — without this, the window can retain non-client metrics from the old
+            // (captioned/thick-framed) style and the final MoveWindow sizes the wrong frame.
+            SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
+                SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-            if (!MoveWindow(hWnd, abd.rc.left, abd.rc.top,
-                abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top, true))
+            int moveW = abd.rc.right - abd.rc.left;
+            int moveH = abd.rc.bottom - abd.rc.top;
+            Debug.WriteLine($"[ApplyDocked] MoveWindow({abd.rc.left},{abd.rc.top},{moveW},{moveH})");
+            if (!MoveWindow(hWnd, abd.rc.left, abd.rc.top, moveW, moveH, true))
             {
                 LogWin32Error("MoveWindow (docked)");
             }
+
+            if (GetWindowRect(hWnd, out RECT actual))
+                Debug.WriteLine($"[ApplyDocked] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left} h={actual.bottom - actual.top}");
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -387,12 +406,21 @@ namespace AppAppBar3
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hWnd, GWL_STYLE, style);
+            SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
+                SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+            Debug.WriteLine($"[ApplyAutohide] edge={edge} barSizeScaled={barSizeScaled} scale={scale} triggerPx={triggerPx} " +
+                $"shown=({shownRect.left},{shownRect.top})-({shownRect.right},{shownRect.bottom}) w={shownRect.right - shownRect.left} " +
+                $"hidden=({hiddenRect.left},{hiddenRect.top})-({hiddenRect.right},{hiddenRect.bottom}) w={hiddenRect.right - hiddenRect.left}");
 
             SetWindowPos(hWnd, HWND_TOPMOST,
                 hiddenRect.left, hiddenRect.top,
                 hiddenRect.right - hiddenRect.left,
                 hiddenRect.bottom - hiddenRect.top,
                 SWP_NOACTIVATE);
+
+            if (GetWindowRect(hWnd, out RECT actual))
+                Debug.WriteLine($"[ApplyAutohide] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left}");
             autohideState = AutohideState.Hidden;
             cursorLeftShownAt = DateTime.MaxValue;
 

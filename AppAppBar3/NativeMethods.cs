@@ -125,9 +125,14 @@ namespace AppAppBar3
         public const int ABS_ALWAYSONTOP = 0x2;
 
         public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
-        public const uint SWP_NOACTIVATE = 0x0010;
-        public const uint SWP_NOSIZE     = 0x0001;
-        public const uint SWP_NOZORDER   = 0x0004;
+        public const uint SWP_NOACTIVATE    = 0x0010;
+        public const uint SWP_NOSIZE        = 0x0001;
+        public const uint SWP_NOZORDER      = 0x0004;
+        public const uint SWP_NOMOVE        = 0x0002;
+        public const uint SWP_FRAMECHANGED  = 0x0020;
+
+        [DllImport("user32.dll")]
+        public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         // Standard Win32 window messages used by the AppBar contract.
         public const int WM_ACTIVATE         = 0x0006;
