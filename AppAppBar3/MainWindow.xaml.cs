@@ -290,6 +290,12 @@ namespace AppAppBar3
         {
             StopAutohideTimer();
 
+            // Release any prior reservation first. If we don't, resizing from e.g.
+            // 50→100 on Top makes the shell treat our existing 50px strip as an
+            // obstacle and pushes the new 100px proposal below it — leaving the old
+            // 50px reserved above the bar after commit.
+            ReleaseDockedReservation(hWnd, edge);
+
             var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
@@ -300,13 +306,13 @@ namespace AppAppBar3
             // the full work area as the proposed rect makes the shell shrink an oversized
             // proposal, and it does so asymmetrically for Left vs Right.
             abd.rc = targetMonitor.MonitorRect;
-            ApplyThickness(ref abd.rc, edge, barSizeScaled);
+            ApplyThickness(ref abd.rc, edge, barSizeScaled, targetMonitor.MonitorRect);
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
-            ApplyThickness(ref abd.rc, edge, barSizeScaled);
+            ApplyThickness(ref abd.rc, edge, barSizeScaled, targetMonitor.MonitorRect);
 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
-            ApplyThickness(ref abd.rc, edge, barSizeScaled);
+            ApplyThickness(ref abd.rc, edge, barSizeScaled, targetMonitor.MonitorRect);
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
@@ -328,14 +334,32 @@ namespace AppAppBar3
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
 
-        private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness)
+        // Force the bar's anchored edge back to the monitor's edge and set the opposite
+        // side from the thickness. We force the anchor (instead of preserving whatever
+        // rc.top/left/right/bottom we passed in) because ABM_QUERYPOS/ABM_SETPOS can
+        // shift our rc along the thickness axis to avoid an existing reservation — even
+        // our OWN prior reservation — which otherwise leaves a strip of shell-reserved
+        // space between the bar and the screen edge after a resize.
+        private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness, RECT monitor)
         {
             switch (edge)
             {
-                case ABEdge.Left:   rc.right  = rc.left + thickness; break;
-                case ABEdge.Right:  rc.left   = rc.right - thickness; break;
-                case ABEdge.Top:    rc.bottom = rc.top + thickness; break;
-                case ABEdge.Bottom: rc.top    = rc.bottom - thickness; break;
+                case ABEdge.Left:
+                    rc.left = monitor.left;
+                    rc.right = rc.left + thickness;
+                    break;
+                case ABEdge.Right:
+                    rc.right = monitor.right;
+                    rc.left = rc.right - thickness;
+                    break;
+                case ABEdge.Top:
+                    rc.top = monitor.top;
+                    rc.bottom = rc.top + thickness;
+                    break;
+                case ABEdge.Bottom:
+                    rc.bottom = monitor.bottom;
+                    rc.top = rc.bottom - thickness;
+                    break;
             }
         }
 
@@ -627,7 +651,11 @@ namespace AppAppBar3
                     break;
 
                 case WM_WINDOWPOSCHANGED:
-                    if (fBarRegistered)
+                    // Skip during drag-resize — the preview moves fire many
+                    // WM_WINDOWPOSCHANGED messages and we don't want to stream
+                    // intermediate positions to the shell. CommitDrag() informs the
+                    // shell once via ABSetPos on release.
+                    if (fBarRegistered && !isDragResizing)
                     {
                         var a = new APPBARDATA();
                         a.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
@@ -1075,7 +1103,7 @@ namespace AppAppBar3
             double scale = target.scale > 0 ? target.scale : 1.0;
             int thicknessPx = (int)Math.Round(newBarSize * scale);
             RECT rc = target.MonitorRect;
-            ApplyThickness(ref rc, (ABEdge)edgeMonitor.SelectedItem, thicknessPx);
+            ApplyThickness(ref rc, (ABEdge)edgeMonitor.SelectedItem, thicknessPx, target.MonitorRect);
 
             var hWnd = WindowNative.GetWindowHandle(this);
             SetWindowPos(hWnd, IntPtr.Zero, rc.left, rc.top,
