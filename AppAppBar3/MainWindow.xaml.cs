@@ -1084,30 +1084,28 @@ namespace AppAppBar3
             CommitDrag();
         }
 
-        private async void CommitDrag()
+        private void CommitDrag()
         {
             if (lastPreviewedBarSize == dragStartBarSize) return;
             saveSetting("bar_size", lastPreviewedBarSize);
-            Debug.WriteLine($"[AppBar] CommitDrag {dragStartBarSize}->{lastPreviewedBarSize} dipsOnEdge={edgeMonitor.SelectedItem}");
+            Debug.WriteLine($"[AppBar] CommitDrag {dragStartBarSize}->{lastPreviewedBarSize}");
 
-            // Explicitly release the prior reservation, yield to let the shell
-            // recompute work areas, then re-register with the new size. Plain
-            // REMOVE+NEW back-to-back didn't fix the "old strip" issue because
-            // the shell's work-area recomputation from REMOVE lags the caller
-            // thread — without a yield, the subsequent NEW+SETPOS sometimes
-            // sees the old reservation still active and shifts the new proposal
-            // past it, leaving a reserved strip between the bar and the edge.
+            // Trying ABM_SETSTATE as the nudge to force the shell to recompute
+            // work areas / drop stale reservations. Read the current taskbar
+            // state via ABM_GETSTATE and write it back unchanged — we only want
+            // the side-effect ABN_STATECHANGE broadcast, not to alter the user's
+            // taskbar autohide/always-on-top config.
             var hWnd = WindowNative.GetWindowHandle(this);
             var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
-            SHAppBarMessage((int)AppBarMessages.ABM_REMOVE, ref abd);
-            fBarRegistered = false;
-            Debug.WriteLine("[AppBar] post-REMOVE, yielding 50ms before re-register");
+            IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_GETSTATE, ref abd);
+            Debug.WriteLine($"[AppBar] ABM_GETSTATE returned state={state.ToInt64()}");
+            abd.lParam = state;
+            SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd);
+            Debug.WriteLine("[AppBar] ABM_SETSTATE sent with same state");
 
-            await Task.Delay(50);
-
-            RegisterAppBar((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
+            ABSetPos((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
         }
 
         // Positions the grip against the inner edge of the bar (opposite the dock edge).
