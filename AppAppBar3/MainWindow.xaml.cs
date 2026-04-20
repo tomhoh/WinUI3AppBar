@@ -1090,22 +1090,43 @@ namespace AppAppBar3
             saveSetting("bar_size", lastPreviewedBarSize);
             Debug.WriteLine($"[AppBar] CommitDrag {dragStartBarSize}->{lastPreviewedBarSize}");
 
-            // Trying ABM_SETSTATE as the nudge to force the shell to recompute
-            // work areas / drop stale reservations. Read the current taskbar
-            // state via ABM_GETSTATE and write it back unchanged — we only want
-            // the side-effect ABN_STATECHANGE broadcast, not to alter the user's
-            // taskbar autohide/always-on-top config.
-            var hWnd = WindowNative.GetWindowHandle(this);
-            var abd = new APPBARDATA();
-            abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
-            abd.hWnd = hWnd;
-            IntPtr state = SHAppBarMessage((int)AppBarMessages.ABM_GETSTATE, ref abd);
-            Debug.WriteLine($"[AppBar] ABM_GETSTATE returned state={state.ToInt64()}");
-            abd.lParam = state;
-            SHAppBarMessage((int)AppBarMessages.ABM_SETSTATE, ref abd);
-            Debug.WriteLine("[AppBar] ABM_SETSTATE sent with same state");
+            var currentEdge = (ABEdge)edgeMonitor.SelectedItem;
+            var monitorName = cbMonitor.SelectedItem as string;
+            Monitor target = null;
+            foreach (var m in MonitorList)
+                if (m.MonitorName == monitorName) { target = m; break; }
 
-            ABSetPos((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
+            // Mirror the user's manual workaround in code: toggling edges via
+            // the combobox (which sends SETPOS with a DIFFERENT uEdge) cleanly
+            // drops the stale reservation, but same-edge SETPOS does not. Send
+            // one SETPOS with the opposite uEdge first — just shell bookkeeping,
+            // the window itself doesn't move — then run the real ABSetPos which
+            // does QUERYPOS + SETPOS + SetWindowPos on the real edge with the
+            // new size.
+            if (target != null)
+            {
+                var opposite = currentEdge switch
+                {
+                    ABEdge.Top    => ABEdge.Bottom,
+                    ABEdge.Bottom => ABEdge.Top,
+                    ABEdge.Left   => ABEdge.Right,
+                    _             => ABEdge.Left,
+                };
+
+                var hWnd = WindowNative.GetWindowHandle(this);
+                var abd = new APPBARDATA();
+                abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+                abd.hWnd = hWnd;
+                abd.uEdge = (int)opposite;
+                // Thin 1-px reservation on the opposite edge — minimal impact on
+                // other apps' work areas during the toggle.
+                abd.rc = target.MonitorRect;
+                ApplyThickness(ref abd.rc, opposite, 1);
+                SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
+                Debug.WriteLine($"[AppBar] edge-toggle uEdge={opposite} rc=({abd.rc.left},{abd.rc.top},{abd.rc.right},{abd.rc.bottom})");
+            }
+
+            ABSetPos(currentEdge, monitorName);
         }
 
         // Positions the grip against the inner edge of the bar (opposite the dock edge).
