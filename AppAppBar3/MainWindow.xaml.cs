@@ -1092,40 +1092,21 @@ namespace AppAppBar3
 
             var currentEdge = (ABEdge)edgeMonitor.SelectedItem;
             var monitorName = cbMonitor.SelectedItem as string;
-            Monitor target = null;
-            foreach (var m in MonitorList)
-                if (m.MonitorName == monitorName) { target = m; break; }
-
-            // Mirror the user's manual workaround in code: toggling edges via
-            // the combobox (which sends SETPOS with a DIFFERENT uEdge) cleanly
-            // drops the stale reservation, but same-edge SETPOS does not. Send
-            // one SETPOS with the opposite uEdge first — just shell bookkeeping,
-            // the window itself doesn't move — then run the real ABSetPos which
-            // does QUERYPOS + SETPOS + SetWindowPos on the real edge with the
-            // new size.
-            if (target != null)
+            var opposite = currentEdge switch
             {
-                var opposite = currentEdge switch
-                {
-                    ABEdge.Top    => ABEdge.Bottom,
-                    ABEdge.Bottom => ABEdge.Top,
-                    ABEdge.Left   => ABEdge.Right,
-                    _             => ABEdge.Left,
-                };
+                ABEdge.Top    => ABEdge.Bottom,
+                ABEdge.Bottom => ABEdge.Top,
+                ABEdge.Left   => ABEdge.Right,
+                _             => ABEdge.Left,
+            };
 
-                var hWnd = WindowNative.GetWindowHandle(this);
-                var abd = new APPBARDATA();
-                abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
-                abd.hWnd = hWnd;
-                abd.uEdge = (int)opposite;
-                // Thin 1-px reservation on the opposite edge — minimal impact on
-                // other apps' work areas during the toggle.
-                abd.rc = target.MonitorRect;
-                ApplyThickness(ref abd.rc, opposite, 1);
-                SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
-                Debug.WriteLine($"[AppBar] edge-toggle uEdge={opposite} rc=({abd.rc.left},{abd.rc.top},{abd.rc.right},{abd.rc.bottom})");
-            }
-
+            // The ONLY thing that reliably clears the stale reservation is a real
+            // edge change — combobox toggle Top->Left->Top works, so we mirror it
+            // exactly. Call the full ABSetPos twice: once on the opposite edge
+            // (bar briefly moves there), once on the real edge with the new size.
+            // Minor visible flicker as the bar bounces off-edge, but every
+            // in-place variant we've tried does not release the reservation.
+            ABSetPos(opposite, monitorName);
             ABSetPos(currentEdge, monitorName);
         }
 
