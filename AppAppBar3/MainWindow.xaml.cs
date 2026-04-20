@@ -276,16 +276,6 @@ namespace AppAppBar3
         {
             StopAutohideTimer();
 
-            int winDpi = GetDpiForWindow(hWnd);
-            string hdr = $"[ApplyDocked] edge={edge} barSizeScaled={barSizeScaled} " +
-                $"monitorScale={targetMonitor.scale} windowDpi={winDpi} " +
-                $"MonitorRect=({targetMonitor.MonitorRect.left},{targetMonitor.MonitorRect.top})-" +
-                $"({targetMonitor.MonitorRect.right},{targetMonitor.MonitorRect.bottom}) " +
-                $"WorkRect=({targetMonitor.WorkRect.left},{targetMonitor.WorkRect.top})-" +
-                $"({targetMonitor.WorkRect.right},{targetMonitor.WorkRect.bottom})";
-            Debug.WriteLine(hdr);
-            SettingMethods.FileLog(hdr);
-
             var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
@@ -297,43 +287,28 @@ namespace AppAppBar3
             // proposal, and it does so asymmetrically for Left vs Right.
             abd.rc = targetMonitor.MonitorRect;
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
-            LogRect("pre-QUERYPOS", abd.rc);
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
-            LogRect("post-QUERYPOS", abd.rc);
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
-            LogRect("post-SETPOS", abd.rc);
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hWnd, GWL_STYLE, style);
-            // SWP_FRAMECHANGED commits the style change and forces WM_NCCALCSIZE before the
-            // move — without this, the window can retain non-client metrics from the old
-            // (captioned/thick-framed) style and the final MoveWindow sizes the wrong frame.
+            // SWP_FRAMECHANGED commits the style change and forces WM_NCCALCSIZE before
+            // the move so the window doesn't retain non-client metrics from the old frame.
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-            int moveW = abd.rc.right - abd.rc.left;
-            int moveH = abd.rc.bottom - abd.rc.top;
-            string moveLine = $"[ApplyDocked] SetWindowPos({abd.rc.left},{abd.rc.top},{moveW},{moveH})";
-            Debug.WriteLine(moveLine);
-            SettingMethods.FileLog(moveLine);
             // SWP_NOSENDCHANGING skips WM_WINDOWPOSCHANGING, which WinUIEx.WindowEx was
-            // intercepting to clamp our width up to ~132 DIPs (its content/MinWidth floor).
-            if (!SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top, moveW, moveH,
+            // intercepting to clamp our width to ~132 DIPs (its content/MinWidth floor).
+            if (!SetWindowPos(hWnd, IntPtr.Zero, abd.rc.left, abd.rc.top,
+                abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top,
                 SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSENDCHANGING))
             {
                 LogWin32Error("SetWindowPos (docked)");
-            }
-
-            if (GetWindowRect(hWnd, out RECT actual))
-            {
-                string actualLine = $"[ApplyDocked] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left} h={actual.bottom - actual.top}";
-                Debug.WriteLine(actualLine);
-                SettingMethods.FileLog(actualLine);
             }
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
@@ -348,13 +323,6 @@ namespace AppAppBar3
                 case ABEdge.Top:    rc.bottom = rc.top + thickness; break;
                 case ABEdge.Bottom: rc.top    = rc.bottom - thickness; break;
             }
-        }
-
-        private static void LogRect(string label, RECT r)
-        {
-            string line = $"[ApplyDocked] {label} rc=({r.left},{r.top})-({r.right},{r.bottom}) w={r.right - r.left} h={r.bottom - r.top}";
-            Debug.WriteLine(line);
-            SettingMethods.FileLog(line);
         }
 
         private void ApplyAutohide(IntPtr hWnd, ABEdge edge, Monitor targetMonitor, int barSizeScaled)
@@ -435,25 +403,13 @@ namespace AppAppBar3
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-            int winDpiAh = GetDpiForWindow(hWnd);
-            string ahLine = $"[ApplyAutohide] edge={edge} barSizeScaled={barSizeScaled} scale={scale} windowDpi={winDpiAh} triggerPx={triggerPx} " +
-                $"shown=({shownRect.left},{shownRect.top})-({shownRect.right},{shownRect.bottom}) w={shownRect.right - shownRect.left} " +
-                $"hidden=({hiddenRect.left},{hiddenRect.top})-({hiddenRect.right},{hiddenRect.bottom}) w={hiddenRect.right - hiddenRect.left}";
-            Debug.WriteLine(ahLine);
-            SettingMethods.FileLog(ahLine);
-
+            // SWP_NOSENDCHANGING skips the same WinUIEx MinWidth clamp that ApplyDocked
+            // avoids — autohide sizes the window to barSizeScaled on Left/Right too.
             SetWindowPos(hWnd, HWND_TOPMOST,
                 hiddenRect.left, hiddenRect.top,
                 hiddenRect.right - hiddenRect.left,
                 hiddenRect.bottom - hiddenRect.top,
-                SWP_NOACTIVATE);
-
-            if (GetWindowRect(hWnd, out RECT actual))
-            {
-                string actualAh = $"[ApplyAutohide] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left}";
-                Debug.WriteLine(actualAh);
-                SettingMethods.FileLog(actualAh);
-            }
+                SWP_NOACTIVATE | SWP_NOSENDCHANGING);
             autohideState = AutohideState.Hidden;
             cursorLeftShownAt = DateTime.MaxValue;
 
@@ -597,14 +553,14 @@ namespace AppAppBar3
             int w = from.right - from.left;
             int h = from.bottom - from.top;
             var hWnd = WindowNative.GetWindowHandle(this);
-            SetWindowPos(hWnd, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE);
+            SetWindowPos(hWnd, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE | SWP_NOSENDCHANGING);
         }
 
         private void SnapTo(RECT r)
         {
             var hWnd = WindowNative.GetWindowHandle(this);
             SetWindowPos(hWnd, HWND_TOPMOST, r.left, r.top,
-                r.right - r.left, r.bottom - r.top, SWP_NOACTIVATE);
+                r.right - r.left, r.bottom - r.top, SWP_NOACTIVATE | SWP_NOSENDCHANGING);
         }
 
         private static bool PointInRect(POINT p, RECT r)

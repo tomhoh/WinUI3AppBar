@@ -132,11 +132,6 @@ namespace AppAppBar3
         public const uint SWP_FRAMECHANGED    = 0x0020;
         public const uint SWP_NOSENDCHANGING  = 0x0400;
 
-        [DllImport("user32.dll")]
-        public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-        [DllImport("user32.dll")]
-        public static extern int GetDpiForWindow(IntPtr hWnd);
 
         // Standard Win32 window messages used by the AppBar contract.
         public const int WM_ACTIVATE         = 0x0006;
