@@ -119,12 +119,13 @@ namespace AppAppBar3
         private const int AutohideHideDebounceMs = 300;
         private const int AutohideTriggerPxUnscaled = 2;
 
-        // --- Drag-resize state (left-drag on the inner-edge grip adjusts thickness) ---
+        // --- Drag-resize state (Shift + left-drag on the inner-edge grip adjusts thickness) ---
         private bool isDragResizing;
         private POINT dragStartPt;
         private int dragStartBarSize;
         private double dragMonitorScale = 1.0;
         private int lastPreviewedBarSize;
+        private bool pointerOverGrip;
         private const int MinBarSize = 20;
         private const int MaxBarSize = 500;
 
@@ -976,12 +977,57 @@ namespace AppAppBar3
                 DockToAppBar(webWindow);
             }
         }
+        private void Grip_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            pointerOverGrip = true;
+            UpdateGripCursor(IsShiftHeld(e.KeyModifiers));
+        }
+
+        private void Grip_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            pointerOverGrip = false;
+            if (!isDragResizing) resizeGrip.SetCursorShape(null);
+        }
+
+        private void RootGrid_KeyChanged(object sender, KeyRoutedEventArgs e)
+        {
+            // Only Shift events matter, and only when the cursor is parked on the grip
+            // (so holding Shift elsewhere doesn't change anything).
+            if (e.Key != VirtualKey.Shift && e.Key != VirtualKey.LeftShift && e.Key != VirtualKey.RightShift) return;
+            if (!pointerOverGrip || isDragResizing) return;
+            UpdateGripCursor(IsShiftHeldLive());
+        }
+
+        private static bool IsShiftHeld(VirtualKeyModifiers m)
+            => (m & VirtualKeyModifiers.Shift) != 0;
+
+        // KeyRoutedEventArgs doesn't tell us the current Shift state directly, so read it
+        // live from the OS via the input source.
+        private static bool IsShiftHeldLive()
+            => (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+                & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
+
+        private void UpdateGripCursor(bool shiftHeld)
+        {
+            if (!shiftHeld || edgeMonitor.SelectedItem == null)
+            {
+                resizeGrip.SetCursorShape(null);
+                return;
+            }
+            var shape = (ABEdge)edgeMonitor.SelectedItem switch
+            {
+                ABEdge.Left or ABEdge.Right => InputSystemCursorShape.SizeWestEast,
+                _                            => InputSystemCursorShape.SizeNorthSouth,
+            };
+            resizeGrip.SetCursorShape(InputSystemCursor.Create(shape));
+        }
+
         private void Grip_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             var props = e.GetCurrentPoint(resizeGrip).Properties;
             if (!props.IsLeftButtonPressed) return;
             // Require Shift so we don't start resizing from stray clicks on the grip strip.
-            if ((e.KeyModifiers & VirtualKeyModifiers.Shift) == 0) return;
+            if (!IsShiftHeld(e.KeyModifiers)) return;
             // Autohide uses a different geometry; skip drag-resize in that mode.
             if (autoHideEnabled) return;
             if (edgeMonitor.SelectedItem == null || cbMonitor.SelectedItem == null) return;
@@ -1001,7 +1047,11 @@ namespace AppAppBar3
 
         private void Grip_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
-            if (!isDragResizing) return;
+            if (!isDragResizing)
+            {
+                UpdateGripCursor(IsShiftHeld(e.KeyModifiers));
+                return;
+            }
             if (!GetCursorPos(out POINT p)) return;
 
             int dxPx = p.x - dragStartPt.x;
@@ -1047,8 +1097,8 @@ namespace AppAppBar3
             ABSetPos((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
         }
 
-        // Repositions the grip against the inner edge of the bar (opposite the dock edge)
-        // and swaps the cursor between horizontal and vertical two-way arrows.
+        // Positions the grip against the inner edge of the bar (opposite the dock edge).
+        // Cursor is set dynamically in UpdateGripCursor based on Shift-held state.
         private void UpdateResizeGrip()
         {
             if (resizeGrip == null || edgeMonitor.SelectedItem == null) return;
@@ -1060,30 +1110,28 @@ namespace AppAppBar3
                     resizeGrip.VerticalAlignment = VerticalAlignment.Stretch;
                     resizeGrip.Width = gripThickness;
                     resizeGrip.Height = double.NaN;
-                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
                     break;
                 case ABEdge.Right:
                     resizeGrip.HorizontalAlignment = HorizontalAlignment.Left;
                     resizeGrip.VerticalAlignment = VerticalAlignment.Stretch;
                     resizeGrip.Width = gripThickness;
                     resizeGrip.Height = double.NaN;
-                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
                     break;
                 case ABEdge.Top:
                     resizeGrip.HorizontalAlignment = HorizontalAlignment.Stretch;
                     resizeGrip.VerticalAlignment = VerticalAlignment.Bottom;
                     resizeGrip.Width = double.NaN;
                     resizeGrip.Height = gripThickness;
-                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
                     break;
                 case ABEdge.Bottom:
                     resizeGrip.HorizontalAlignment = HorizontalAlignment.Stretch;
                     resizeGrip.VerticalAlignment = VerticalAlignment.Top;
                     resizeGrip.Width = double.NaN;
                     resizeGrip.Height = gripThickness;
-                    resizeGrip.SetCursorShape(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
                     break;
             }
+            // Re-evaluate cursor in case the edge changed while the pointer was over the grip.
+            if (pointerOverGrip) UpdateGripCursor(IsShiftHeldLive());
         }
 
         private void PreviewBarSize(int newBarSize)
