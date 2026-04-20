@@ -1084,12 +1084,30 @@ namespace AppAppBar3
             CommitDrag();
         }
 
-        private void CommitDrag()
+        private async void CommitDrag()
         {
             if (lastPreviewedBarSize == dragStartBarSize) return;
             saveSetting("bar_size", lastPreviewedBarSize);
             Debug.WriteLine($"[AppBar] CommitDrag {dragStartBarSize}->{lastPreviewedBarSize} dipsOnEdge={edgeMonitor.SelectedItem}");
-            ABSetPos((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
+
+            // Explicitly release the prior reservation, yield to let the shell
+            // recompute work areas, then re-register with the new size. Plain
+            // REMOVE+NEW back-to-back didn't fix the "old strip" issue because
+            // the shell's work-area recomputation from REMOVE lags the caller
+            // thread — without a yield, the subsequent NEW+SETPOS sometimes
+            // sees the old reservation still active and shifts the new proposal
+            // past it, leaving a reserved strip between the bar and the edge.
+            var hWnd = WindowNative.GetWindowHandle(this);
+            var abd = new APPBARDATA();
+            abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+            abd.hWnd = hWnd;
+            SHAppBarMessage((int)AppBarMessages.ABM_REMOVE, ref abd);
+            fBarRegistered = false;
+            Debug.WriteLine("[AppBar] post-REMOVE, yielding 50ms before re-register");
+
+            await Task.Delay(50);
+
+            RegisterAppBar((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
         }
 
         // Positions the grip against the inner edge of the bar (opposite the dock edge).
