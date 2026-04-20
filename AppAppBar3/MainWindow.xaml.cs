@@ -329,6 +329,17 @@ namespace AppAppBar3
                 LogWin32Error("SetWindowPos (docked)");
             }
 
+            // Also push the new rect through AppWindow.MoveAndResize. SWP_NOSENDCHANGING
+            // above skips WM_WINDOWPOSCHANGING, which is where WinUI's AppWindow syncs
+            // its internal Size/Position state — without this the shell reserves the
+            // new thickness but AppWindow/XAML keeps drawing at the old size, leaving
+            // a strip of desktop visible between the bar and the screen edge.
+            appWindow?.MoveAndResize(new Windows.Graphics.RectInt32(
+                abd.rc.left, abd.rc.top,
+                abd.rc.right - abd.rc.left,
+                abd.rc.bottom - abd.rc.top));
+            Debug.WriteLine($"[AppBar] post-MoveAndResize appWindow.Size=({appWindow?.Size.Width},{appWindow?.Size.Height}) Position=({appWindow?.Position.X},{appWindow?.Position.Y})");
+
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
 
@@ -1131,10 +1142,13 @@ namespace AppAppBar3
             RECT rc = target.MonitorRect;
             ApplyThickness(ref rc, (ABEdge)edgeMonitor.SelectedItem, thicknessPx);
 
-            var hWnd = WindowNative.GetWindowHandle(this);
-            SetWindowPos(hWnd, IntPtr.Zero, rc.left, rc.top,
-                rc.right - rc.left, rc.bottom - rc.top,
-                SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSENDCHANGING);
+            // Use AppWindow.MoveAndResize so both the native HWND and WinUI's
+            // AppWindow/XAML size state update together — raw SetWindowPos with
+            // SWP_NOSENDCHANGING only moves the HWND and leaves XAML at the old size.
+            appWindow?.MoveAndResize(new Windows.Graphics.RectInt32(
+                rc.left, rc.top,
+                rc.right - rc.left,
+                rc.bottom - rc.top));
         }
 
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
