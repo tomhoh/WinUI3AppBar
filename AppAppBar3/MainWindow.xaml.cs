@@ -1092,9 +1092,20 @@ namespace AppAppBar3
         {
             if (lastPreviewedBarSize == dragStartBarSize) return;
             saveSetting("bar_size", lastPreviewedBarSize);
-            // Commit the new size through the AppBar contract so the shell
-            // updates its work-area reservation to match the previewed rect.
-            ABSetPos((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
+
+            // ABM_SETPOS alone doesn't replace the old strip — the shell keeps the
+            // prior reservation and pushes the new proposal below it, which leaves
+            // a reserved band between the bar and the screen edge. Full REMOVE +
+            // NEW re-registration gives the shell a clean slate (same flow the app
+            // takes at startup, which we know positions correctly).
+            var hWnd = WindowNative.GetWindowHandle(this);
+            var abd = new APPBARDATA();
+            abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
+            abd.hWnd = hWnd;
+            SHAppBarMessage((int)AppBarMessages.ABM_REMOVE, ref abd);
+            fBarRegistered = false;
+
+            RegisterAppBar((ABEdge)edgeMonitor.SelectedItem, cbMonitor.SelectedItem as string);
         }
 
         // Positions the grip against the inner edge of the bar (opposite the dock edge).
