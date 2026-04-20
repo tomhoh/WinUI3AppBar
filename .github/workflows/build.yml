@@ -1,0 +1,157 @@
+name: Build
+
+on:
+  push:
+    branches: [Experimental, master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      Configuration: Release
+      Platform: x64
+      Solution: AppAppBar3/AppAppBar3.csproj
+      # Publisher must match the one in Package.appxmanifest exactly for MSIX signing.
+      CertSubject: CN=tomho
+      PfxPassword: appbar-ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Generate self-signed code-signing cert
+        id: cert
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject "$env:CertSubject" `
+            -KeyUsage DigitalSignature `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          $pwd = ConvertTo-SecureString -String "$env:PfxPassword" -Force -AsPlainText
+          $pfxPath = "$env:GITHUB_WORKSPACE\AppAppBar3\ci-cert.pfx"
+          $cerPath = "$env:GITHUB_WORKSPACE\AppAppBar3\ci-cert.cer"
+          Export-PfxCertificate  -Cert $cert -FilePath $pfxPath -Password $pwd | Out-Null
+          Export-Certificate     -Cert $cert -FilePath $cerPath                 | Out-Null
+          "thumbprint=$($cert.Thumbprint)"       | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "pfx=AppAppBar3\ci-cert.pfx"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "cer=$cerPath"                         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # -----------------------------------------------------------------------
+      # Option A — MSIX package (signed with the CI-generated self-signed cert).
+      # MSIX subscribers must import ci-cert.cer into "Trusted People" on their
+      # machine before installing the .msix, since the cert isn't a public CA.
+      # -----------------------------------------------------------------------
+      - name: Build MSIX (Option A)
+        id: msix
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          msbuild $env:Solution `
+            /restore `
+            /p:Configuration=$env:Configuration `
+            /p:Platform=$env:Platform `
+            /p:AppxPackageSigningEnabled=true `
+            /p:PackageCertificateKeyFile="${{ steps.cert.outputs.pfx }}" `
+            /p:PackageCertificateThumbprint="${{ steps.cert.outputs.thumbprint }}" `
+            /p:PackageCertificatePassword="$env:PfxPassword" `
+            /p:GenerateAppxPackageOnBuild=true `
+            /p:GenerateAppInstallerFile=false `
+            /p:AppxBundle=Never `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /p:AppxPackageDir="$env:GITHUB_WORKSPACE\publish\msix\\"
+
+      # -----------------------------------------------------------------------
+      # Option B — Unpackaged, runtime-dependent. Target machine needs the
+      # Windows App Runtime 1.5 installer (https://aka.ms/windowsappsdk).
+      #
+      # Uses msbuild.exe (from VS) rather than `dotnet publish` because the
+      # Windows App SDK 1.5 targets reference Microsoft.Build.Packaging.Pri.Tasks.dll,
+      # which ships with Visual Studio — not with the standalone dotnet SDK
+      # (MSB4062 otherwise).
+      # -----------------------------------------------------------------------
+      - name: Build unpackaged runtime-dependent (Option B)
+        shell: pwsh
+        run: |
+          msbuild $env:Solution `
+            /restore `
+            /t:Publish `
+            /p:Configuration=$env:Configuration `
+            /p:Platform=$env:Platform `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=false `
+            /p:WindowsPackageType=None `
+            /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-runtime-dep\\"
+
+      # -----------------------------------------------------------------------
+      # Option C — Unpackaged, fully self-contained. ~100 MB, portable, no prereqs.
+      # -----------------------------------------------------------------------
+      - name: Build unpackaged self-contained (Option C)
+        shell: pwsh
+        run: |
+          msbuild $env:Solution `
+            /restore `
+            /t:Publish `
+            /p:Configuration=$env:Configuration `
+            /p:Platform=$env:Platform `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=true `
+            /p:WindowsAppSDKSelfContained=true `
+            /p:WindowsPackageType=None `
+            /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained\\"
+
+      - name: Upload MSIX artifact
+        if: steps.msix.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppAppBar3-MSIX-x64
+          # Sideload-ready contents only — excludes .appinstaller (invalid auto-update
+          # manifest from the stale AppInstallerUri in the csproj), .appxsym (debug
+          # symbols), and the raw .cer from the MSIX build (we use our own ci-cert).
+          path: |
+            publish/msix/*_Test/**/*.msix
+            publish/msix/*_Test/*.cer
+            publish/msix/*_Test/Install.ps1
+            publish/msix/*_Test/Add-AppDevPackage.ps1
+            publish/msix/*_Test/Add-AppDevPackage.resources/en-US/**
+            AppAppBar3/ci-cert.cer
+          if-no-files-found: warn
+
+      - name: Upload unpackaged runtime-dependent artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppAppBar3-Unpackaged-RuntimeDep-x64
+          path: publish/unpackaged-runtime-dep/
+          if-no-files-found: error
+
+      - name: Upload unpackaged self-contained artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppAppBar3-Unpackaged-SelfContained-x64
+          path: publish/unpackaged-self-contained/
+          if-no-files-found: error
+
+      - name: Summary
+        if: always()
+        shell: pwsh
+        run: |
+          $msixState = "${{ steps.msix.outcome }}"
+          Add-Content $env:GITHUB_STEP_SUMMARY "## Build artifacts`n"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| Variant | Status |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "|---|---|"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| A — MSIX (signed, sideload) | $msixState |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| B — Unpackaged, runtime-dep | success |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| C — Unpackaged, self-contained | success |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "`nMSIX install: import **ci-cert.cer** into *Local Machine > Trusted People* first, then double-click the .msix."

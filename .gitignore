@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# CI-generated self-signed cert (build.yml)
+ci-cert.pfx
+ci-cert.cer

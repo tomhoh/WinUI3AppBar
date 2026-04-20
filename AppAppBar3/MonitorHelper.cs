@@ -25,41 +25,39 @@ namespace AppAppBar3
             List<Monitor> monitors = new List<Monitor>();
             MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
             {
-                double monitorScale = 1;
-                uint dpiX;
-                uint dpiY;
-                
-                MONITORINFOEX mi = new MONITORINFOEX();
-                mi.cbSize = Marshal.SizeOf(mi);
-                bool success = GetMonitorInfo(hMonitor, ref mi);
-                if (success)
+                // Throwing inside a native callback is undefined behavior — log and continue.
+                try
                 {
-                    GetDpiForMonitor(hMonitor, DpiType.Effective, out dpiX, out dpiY);
+                    MONITORINFOEX mi = new MONITORINFOEX();
+                    mi.cbSize = Marshal.SizeOf(mi);
+                    if (!GetMonitorInfo(hMonitor, ref mi))
+                    {
+                        Debug.WriteLine("GetMonitorInfo failed: err=" + Marshal.GetLastWin32Error());
+                        return true;
+                    }
 
-                    if (dpiX > 96)
+                    double monitorScale = 1;
+                    if (GetDpiForMonitor(hMonitor, DpiType.Effective, out uint dpiX, out _) == IntPtr.Zero && dpiX > 96)
                         monitorScale = (double)dpiX / 96d;
 
-
-                    var monitor = new Monitor
+                    monitors.Add(new Monitor
                     {
                         MonitorName = mi.szDevice,
                         scale = monitorScale,
                         WorkRect = mi.rcWork,
                         MonitorRect = mi.rcMonitor,
-                    };
-
-                    monitors.Add(monitor);
-
+                    });
                 }
-                else
+                catch (Exception ex)
                 {
-                    throw new Win32Exception();
+                    Debug.WriteLine("Monitor enumeration entry failed: " + ex.Message);
                 }
 
                 return true; // Continue enumeration
             };
 
-            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            if (!EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero))
+                Debug.WriteLine("EnumDisplayMonitors failed: err=" + Marshal.GetLastWin32Error());
 
             return monitors;
         }

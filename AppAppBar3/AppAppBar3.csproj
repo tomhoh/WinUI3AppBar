@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>AppAppBar3</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers>win10-x86;win10-x64;win10-arm64</RuntimeIdentifiers>
-    <PublishProfile>win10-$(Platform).pubxml</PublishProfile>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <StartupObject></StartupObject>
@@ -22,24 +22,26 @@
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
     <AssemblyName>AppAppBar3</AssemblyName>
     <PackageCertificateThumbprint>2C316BF94DE42C49EEE29DF14679C9ACEA1FB94D</PackageCertificateThumbprint>
+    <Configurations>Debug;Release;x64test</Configurations>
+  </PropertyGroup>
+
+  <!--
+    Unpackaged build opts. Enable by passing  -p:WindowsPackageType=None  on the
+    publish command line (see the README-style block in the commit message).
+    For a fully portable build add      -p:WindowsAppSDKSelfContained=true
+                                        -p:SelfContained=true
+                                        -p:PublishSingleFile=false
+  -->
+  <PropertyGroup Condition="'$(WindowsPackageType)' == 'None'">
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Settings.xaml" />
     <None Remove="WebWindow.xaml" />
     <None Remove="WindowDetect.xaml" />
   </ItemGroup>
-  <ItemGroup>
-    <COMReference Include="IWshRuntimeLibrary">
-      <WrapperTool>tlbimp</WrapperTool>
-      <VersionMinor>0</VersionMinor>
-      <VersionMajor>1</VersionMajor>
-      <Guid>f935dc20-1cf0-11d0-adb9-00c04fd58a0b</Guid>
-      <Lcid>0</Lcid>
-      <Isolated>false</Isolated>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-    </COMReference>
-  </ItemGroup>
-
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
@@ -51,11 +53,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="8.0.0" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240404000" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
-    <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
-    <PackageReference Include="WinUIEx" Version="2.4.0" />
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.6" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1721" />
+    <PackageReference Include="WinUIEx" Version="2.9.0" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 

@@ -21,8 +21,7 @@ namespace AppAppBar3
     using static NativeMethods;
     public sealed partial class Settings : WinUIEx.WindowEx
     {
-       
-        public const int ABN_POSCHANGED = 1;
+
         public int appBarCallBack;
         WindowMessageMonitor monitor;
         MainWindow parentWindow;
@@ -55,6 +54,15 @@ namespace AppAppBar3
             cbEdgeSettings.SelectedItem = (ABEdge)loadSettings("edge");
 
             loadOnStartupCheckBox.IsChecked = loadOnStartup("LoadOnStartup");
+
+            var autohideSetting = loadSettings("autohide");
+            autohideCheckBox.IsChecked = autohideSetting is bool b && b;
+        }
+
+        private void autohideCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            saveSetting("autohide", autohideCheckBox.IsChecked == true);
+            parentWindow.restartAppBar();
         }
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
@@ -65,22 +73,16 @@ namespace AppAppBar3
 
         private void OnWindowMessageReceived(object sender, WindowMessageEventArgs e)
         {
-            const int WM_DISPLAYCHANGE = 7;
             Debug.WriteLine("AppBar call back " +appBarCallBack.ToString());
             Debug.WriteLine("*************Settings Window Message receieved********** " + e.Message.MessageId.ToString());
 
             if (e.Message.MessageId == appBarCallBack)
             {
-                // Debug.WriteLine("*************Message receieved in callback********** " + e.Message.ToString());
                 switch (e.Message.WParam)
                 {
 
-                    case (int)ABN_POSCHANGED:
+                    case (int)ABNotify.ABN_POSCHANGED:
                          Debug.WriteLine("*************Message callback recieved in Settings Window********** " + e.Message.ToString());
-                        //  monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                        // relocateWindowLocation();
-                        //  monitor.WindowMessageReceived += OnWindowMessageReceived;
-
                         break;
 
                 }
@@ -89,13 +91,7 @@ namespace AppAppBar3
             {
 
                 case WM_DISPLAYCHANGE:
-                    monitor.WindowMessageReceived -= OnWindowMessageReceived;
-                   
                     Debug.WriteLine("Monitor attached ");
-
-
-                    monitor.WindowMessageReceived += OnWindowMessageReceived;
-
                     break;
                // case (int)AppBarMessages.ABM_WINDOWPOSCHANGED:
                     //Debug.WriteLine("window changed position changed notification " + e.Message.ToString());
@@ -107,19 +103,40 @@ namespace AppAppBar3
 
         }
 
+        private const string RunKeyPath   = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string RunValueName = "AppAppBar3";
+        private const string StartupTaskId = "AppAppBar3Id";
+
         private bool loadOnStartup(string setting)
         {
-            ApplicationDataContainer localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-
-            // load a setting that is local to the device
-            if (localSettings.Values[setting] != null)
+            // Packaged build: reflect the actual StartupTask state (respects user's Startup Apps page).
+            // Unpackaged build: reflect presence of the HKCU Run value.
+            if (SettingMethods.IsPackaged())
             {
-                return (bool)(localSettings.Values[setting]);
+                try
+                {
+                    var task = Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId).GetAwaiter().GetResult();
+                    return task.State == Windows.ApplicationModel.StartupTaskState.Enabled
+                        || task.State == Windows.ApplicationModel.StartupTaskState.EnabledByPolicy;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("StartupTask query failed: " + ex.Message);
+                }
             }
             else
             {
-                return false;
+                try
+                {
+                    using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath);
+                    return key?.GetValue(RunValueName) != null;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("HKCU Run read failed: " + ex.Message);
+                }
             }
+            return loadSettings(setting) as bool? ?? false;
         }
 
 
@@ -161,30 +178,61 @@ namespace AppAppBar3
 
         private async void loadOnStartupCheckBox_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            Windows.ApplicationModel.StartupTask startupTask = await Windows.ApplicationModel.StartupTask.GetAsync("AppAppBar3Id");
-        if((sender as CheckBox).IsChecked == true)
+            bool wantEnabled = (sender as CheckBox).IsChecked == true;
+
+            if (SettingMethods.IsPackaged())
             {
-                switch (startupTask.State)
+                try
                 {
-                    case Windows.ApplicationModel.StartupTaskState.Disabled:
-                        Windows.ApplicationModel.StartupTaskState state = await startupTask.RequestEnableAsync();
-                        saveSetting("LoadOnStartup", true);
-                        break;
-                    case Windows.ApplicationModel.StartupTaskState.DisabledByUser:
-                        Debug.WriteLine("Run at startup Startup disabled by user");
-                        break;
-                    case Windows.ApplicationModel.StartupTaskState.DisabledByPolicy:
-                        Debug.WriteLine("Run at startup Startup disabled by Policy");
-                        break;
-                    case Windows.ApplicationModel.StartupTaskState.EnabledByPolicy:
-                        Debug.WriteLine("Run at startup Startup Enabled by Policy");
-                        break;
-                } 
-             }else
-            {
-                startupTask.Disable();
-                saveSetting("LoadOnStartup", false);
+                    var startupTask = await Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId);
+                    if (wantEnabled)
+                    {
+                        switch (startupTask.State)
+                        {
+                            case Windows.ApplicationModel.StartupTaskState.Disabled:
+                                await startupTask.RequestEnableAsync();
+                                break;
+                            case Windows.ApplicationModel.StartupTaskState.DisabledByUser:
+                                Debug.WriteLine("Startup disabled by user — enable in Settings > Apps > Startup.");
+                                break;
+                            case Windows.ApplicationModel.StartupTaskState.DisabledByPolicy:
+                                Debug.WriteLine("Startup disabled by policy.");
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        startupTask.Disable();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("StartupTask toggle failed: " + ex.Message);
+                }
             }
+            else
+            {
+                try
+                {
+                    using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);
+                    if (wantEnabled)
+                    {
+                        var exe = Environment.ProcessPath;
+                        if (!string.IsNullOrEmpty(exe))
+                            key.SetValue(RunValueName, "\"" + exe + "\"");
+                    }
+                    else
+                    {
+                        key.DeleteValue(RunValueName, throwOnMissingValue: false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("HKCU Run write failed: " + ex.Message);
+                }
+            }
+
+            saveSetting("LoadOnStartup", wantEnabled);
         }
 
 
