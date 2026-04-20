@@ -290,12 +290,6 @@ namespace AppAppBar3
         {
             StopAutohideTimer();
 
-            // Release any prior reservation first. If we don't, resizing from e.g.
-            // 50→100 on Top makes the shell treat our existing 50px strip as an
-            // obstacle and pushes the new 100px proposal below it — leaving the old
-            // 50px reserved above the bar after commit.
-            ReleaseDockedReservation(hWnd, edge);
-
             var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
             abd.hWnd = hWnd;
