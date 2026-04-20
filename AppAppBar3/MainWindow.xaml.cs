@@ -1,9 +1,6 @@
-using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Windows.System;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -118,17 +115,6 @@ namespace AppAppBar3
         private const int AutohideAnimMs = 200;
         private const int AutohideHideDebounceMs = 300;
         private const int AutohideTriggerPxUnscaled = 2;
-
-        // --- Drag-resize state (Shift + left-drag on the inner-edge grip adjusts thickness) ---
-        private bool isDragResizing;
-        private POINT dragStartPt;
-        private int dragStartBarSize;
-        private double dragMonitorScale = 1.0;
-        private int lastPreviewedBarSize;
-        private bool pointerOverGrip;
-        private const int MinBarSize = 20;
-        private const int MaxBarSize = 500;
-
         public MainWindow()
         {
 
@@ -213,7 +199,6 @@ namespace AppAppBar3
                 }
                 edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
                 cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
-                UpdateResizeGrip();
                 loadShortCuts();
 
                 
@@ -302,14 +287,11 @@ namespace AppAppBar3
             // proposal, and it does so asymmetrically for Left vs Right.
             abd.rc = targetMonitor.MonitorRect;
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
-            Debug.WriteLine($"[AppBar] proposed pre-QUERYPOS edge={edge} rc=({abd.rc.left},{abd.rc.top},{abd.rc.right},{abd.rc.bottom}) thickness={barSizeScaled}");
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
-            Debug.WriteLine($"[AppBar] QUERYPOS returned rc=({abd.rc.left},{abd.rc.top},{abd.rc.right},{abd.rc.bottom})");
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
-            Debug.WriteLine($"[AppBar] SETPOS returned rc=({abd.rc.left},{abd.rc.top},{abd.rc.right},{abd.rc.bottom})");
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
@@ -328,17 +310,6 @@ namespace AppAppBar3
             {
                 LogWin32Error("SetWindowPos (docked)");
             }
-
-            // Also push the new rect through AppWindow.MoveAndResize. SWP_NOSENDCHANGING
-            // above skips WM_WINDOWPOSCHANGING, which is where WinUI's AppWindow syncs
-            // its internal Size/Position state — without this the shell reserves the
-            // new thickness but AppWindow/XAML keeps drawing at the old size, leaving
-            // a strip of desktop visible between the bar and the screen edge.
-            appWindow?.MoveAndResize(new Windows.Graphics.RectInt32(
-                abd.rc.left, abd.rc.top,
-                abd.rc.right - abd.rc.left,
-                abd.rc.bottom - abd.rc.top));
-            Debug.WriteLine($"[AppBar] post-MoveAndResize appWindow.Size=({appWindow?.Size.Width},{appWindow?.Size.Height}) Position=({appWindow?.Position.X},{appWindow?.Position.Y})");
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -642,11 +613,7 @@ namespace AppAppBar3
                     break;
 
                 case WM_WINDOWPOSCHANGED:
-                    // Skip during drag-resize — the preview moves fire many
-                    // WM_WINDOWPOSCHANGED messages and we don't want to stream
-                    // intermediate positions to the shell. CommitDrag() informs the
-                    // shell once via ABSetPos on release.
-                    if (fBarRegistered && !isDragResizing)
+                    if (fBarRegistered)
                     {
                         var a = new APPBARDATA();
                         a.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
@@ -952,7 +919,7 @@ namespace AppAppBar3
         {
             Debug.WriteLine("This is the edge var "+Edge);
             
-
+           
               ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
             if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
             {
@@ -965,210 +932,12 @@ namespace AppAppBar3
                 stPanel.Orientation = Orientation.Vertical;
             }
 
-            UpdateResizeGrip();
-
            
             if (webWindow != null)
             {
                 DockToAppBar(webWindow);
             }
         }
-        private void Grip_PointerEntered(object sender, PointerRoutedEventArgs e)
-        {
-            pointerOverGrip = true;
-            UpdateGripCursor(IsShiftHeld(e.KeyModifiers));
-        }
-
-        private void Grip_PointerExited(object sender, PointerRoutedEventArgs e)
-        {
-            pointerOverGrip = false;
-            if (!isDragResizing) resizeGrip.SetCursorShape(null);
-        }
-
-        private void RootGrid_KeyChanged(object sender, KeyRoutedEventArgs e)
-        {
-            // Only Shift events matter, and only when the cursor is parked on the grip
-            // (so holding Shift elsewhere doesn't change anything).
-            if (e.Key != VirtualKey.Shift && e.Key != VirtualKey.LeftShift && e.Key != VirtualKey.RightShift) return;
-            if (!pointerOverGrip || isDragResizing) return;
-            UpdateGripCursor(IsShiftHeldLive());
-        }
-
-        private static bool IsShiftHeld(VirtualKeyModifiers m)
-            => (m & VirtualKeyModifiers.Shift) != 0;
-
-        // KeyRoutedEventArgs doesn't tell us the current Shift state directly, so read it
-        // live from the OS via the input source.
-        private static bool IsShiftHeldLive()
-            => (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-                & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
-
-        private void UpdateGripCursor(bool shiftHeld)
-        {
-            if (!shiftHeld || edgeMonitor.SelectedItem == null)
-            {
-                resizeGrip.SetCursorShape(null);
-                return;
-            }
-            var shape = (ABEdge)edgeMonitor.SelectedItem switch
-            {
-                ABEdge.Left or ABEdge.Right => InputSystemCursorShape.SizeWestEast,
-                _                            => InputSystemCursorShape.SizeNorthSouth,
-            };
-            resizeGrip.SetCursorShape(InputSystemCursor.Create(shape));
-        }
-
-        private void Grip_PointerPressed(object sender, PointerRoutedEventArgs e)
-        {
-            var props = e.GetCurrentPoint(resizeGrip).Properties;
-            if (!props.IsLeftButtonPressed) return;
-            // Require Shift so we don't start resizing from stray clicks on the grip strip.
-            if (!IsShiftHeld(e.KeyModifiers)) return;
-            // Autohide uses a different geometry; skip drag-resize in that mode.
-            if (autoHideEnabled) return;
-            if (edgeMonitor.SelectedItem == null || cbMonitor.SelectedItem == null) return;
-            if (!GetCursorPos(out dragStartPt)) return;
-
-            dragStartBarSize = (loadSettings("bar_size") as int?) ?? 50;
-            Monitor mon = null;
-            var monName = cbMonitor.SelectedItem as string;
-            foreach (var m in MonitorList)
-                if (m.MonitorName == monName) { mon = m; break; }
-            dragMonitorScale = (mon != null && mon.scale > 0) ? mon.scale : 1.0;
-            lastPreviewedBarSize = dragStartBarSize;
-
-            isDragResizing = resizeGrip.CapturePointer(e.Pointer);
-            e.Handled = isDragResizing;
-        }
-
-        private void Grip_PointerMoved(object sender, PointerRoutedEventArgs e)
-        {
-            if (!isDragResizing)
-            {
-                UpdateGripCursor(IsShiftHeld(e.KeyModifiers));
-                return;
-            }
-            if (!GetCursorPos(out POINT p)) return;
-
-            int dxPx = p.x - dragStartPt.x;
-            int dyPx = p.y - dragStartPt.y;
-            double deltaDip;
-            switch ((ABEdge)edgeMonitor.SelectedItem)
-            {
-                case ABEdge.Left:   deltaDip =  dxPx / dragMonitorScale; break;
-                case ABEdge.Right:  deltaDip = -dxPx / dragMonitorScale; break;
-                case ABEdge.Top:    deltaDip =  dyPx / dragMonitorScale; break;
-                case ABEdge.Bottom: deltaDip = -dyPx / dragMonitorScale; break;
-                default: return;
-            }
-            int newSize = Math.Clamp((int)Math.Round(dragStartBarSize + deltaDip), MinBarSize, MaxBarSize);
-            if (newSize == lastPreviewedBarSize) return;
-            lastPreviewedBarSize = newSize;
-            PreviewBarSize(newSize);
-            e.Handled = true;
-        }
-
-        private void Grip_PointerReleased(object sender, PointerRoutedEventArgs e)
-        {
-            if (!isDragResizing) return;
-            isDragResizing = false;
-            resizeGrip.ReleasePointerCaptures();
-            CommitDrag();
-            e.Handled = true;
-        }
-
-        private void Grip_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
-        {
-            if (!isDragResizing) return;
-            isDragResizing = false;
-            CommitDrag();
-        }
-
-        private void CommitDrag()
-        {
-            if (lastPreviewedBarSize == dragStartBarSize) return;
-            saveSetting("bar_size", lastPreviewedBarSize);
-            Debug.WriteLine($"[AppBar] CommitDrag {dragStartBarSize}->{lastPreviewedBarSize}");
-
-            var currentEdge = (ABEdge)edgeMonitor.SelectedItem;
-            var monitorName = cbMonitor.SelectedItem as string;
-            var opposite = currentEdge switch
-            {
-                ABEdge.Top    => ABEdge.Bottom,
-                ABEdge.Bottom => ABEdge.Top,
-                ABEdge.Left   => ABEdge.Right,
-                _             => ABEdge.Left,
-            };
-
-            // The ONLY thing that reliably clears the stale reservation is a real
-            // edge change — combobox toggle Top->Left->Top works, so we mirror it
-            // exactly. Call the full ABSetPos twice: once on the opposite edge
-            // (bar briefly moves there), once on the real edge with the new size.
-            // Minor visible flicker as the bar bounces off-edge, but every
-            // in-place variant we've tried does not release the reservation.
-            ABSetPos(opposite, monitorName);
-            ABSetPos(currentEdge, monitorName);
-        }
-
-        // Positions the grip against the inner edge of the bar (opposite the dock edge).
-        // Cursor is set dynamically in UpdateGripCursor based on Shift-held state.
-        private void UpdateResizeGrip()
-        {
-            if (resizeGrip == null || edgeMonitor.SelectedItem == null) return;
-            const double gripThickness = 6;
-            switch ((ABEdge)edgeMonitor.SelectedItem)
-            {
-                case ABEdge.Left:
-                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Right;
-                    resizeGrip.VerticalAlignment = VerticalAlignment.Stretch;
-                    resizeGrip.Width = gripThickness;
-                    resizeGrip.Height = double.NaN;
-                    break;
-                case ABEdge.Right:
-                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Left;
-                    resizeGrip.VerticalAlignment = VerticalAlignment.Stretch;
-                    resizeGrip.Width = gripThickness;
-                    resizeGrip.Height = double.NaN;
-                    break;
-                case ABEdge.Top:
-                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Stretch;
-                    resizeGrip.VerticalAlignment = VerticalAlignment.Bottom;
-                    resizeGrip.Width = double.NaN;
-                    resizeGrip.Height = gripThickness;
-                    break;
-                case ABEdge.Bottom:
-                    resizeGrip.HorizontalAlignment = HorizontalAlignment.Stretch;
-                    resizeGrip.VerticalAlignment = VerticalAlignment.Top;
-                    resizeGrip.Width = double.NaN;
-                    resizeGrip.Height = gripThickness;
-                    break;
-            }
-            // Re-evaluate cursor in case the edge changed while the pointer was over the grip.
-            if (pointerOverGrip) UpdateGripCursor(IsShiftHeldLive());
-        }
-
-        private void PreviewBarSize(int newBarSize)
-        {
-            Monitor target = null;
-            var monName = cbMonitor.SelectedItem as string;
-            foreach (var m in MonitorList)
-                if (m.MonitorName == monName) { target = m; break; }
-            if (target == null) return;
-
-            double scale = target.scale > 0 ? target.scale : 1.0;
-            int thicknessPx = (int)Math.Round(newBarSize * scale);
-            RECT rc = target.MonitorRect;
-            ApplyThickness(ref rc, (ABEdge)edgeMonitor.SelectedItem, thicknessPx);
-
-            // Use AppWindow.MoveAndResize so both the native HWND and WinUI's
-            // AppWindow/XAML size state update together — raw SetWindowPos with
-            // SWP_NOSENDCHANGING only moves the HWND and leaves XAML at the old size.
-            appWindow?.MoveAndResize(new Windows.Graphics.RectInt32(
-                rc.left, rc.top,
-                rc.right - rc.left,
-                rc.bottom - rc.top));
-        }
-
         private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
            Edge = ((ABEdge)edgeMonitor.SelectedItem);
