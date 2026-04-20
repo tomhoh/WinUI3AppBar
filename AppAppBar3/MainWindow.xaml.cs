@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.System;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -957,6 +958,8 @@ namespace AppAppBar3
         {
             var props = e.GetCurrentPoint(resizeGrip).Properties;
             if (!props.IsLeftButtonPressed) return;
+            // Require Shift so we don't start resizing from stray clicks on the grip strip.
+            if ((e.KeyModifiers & VirtualKeyModifiers.Shift) == 0) return;
             // Autohide uses a different geometry; skip drag-resize in that mode.
             if (autoHideEnabled) return;
             if (edgeMonitor.SelectedItem == null || cbMonitor.SelectedItem == null) return;
