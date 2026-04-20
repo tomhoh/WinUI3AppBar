@@ -98,5 +98,21 @@ namespace AppAppBar3
             try { _ = Windows.ApplicationModel.Package.Current; return true; }
             catch { return false; }
         }
+
+        // Simple file logger for diagnosing sizing/DPI issues. Appends to
+        // %LOCALAPPDATA%\AppAppBar3_debug.log. Failures are swallowed — this is best-effort.
+        private static readonly string DebugLogPath =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                         "AppAppBar3_debug.log");
+
+        public static void FileLog(string message)
+        {
+            try
+            {
+                File.AppendAllText(DebugLogPath,
+                    DateTime.Now.ToString("HH:mm:ss.fff") + " " + message + Environment.NewLine);
+            }
+            catch { }
+        }
     }
 }

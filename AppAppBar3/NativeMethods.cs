@@ -134,6 +134,9 @@ namespace AppAppBar3
         [DllImport("user32.dll")]
         public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+        [DllImport("user32.dll")]
+        public static extern int GetDpiForWindow(IntPtr hWnd);
+
         // Standard Win32 window messages used by the AppBar contract.
         public const int WM_ACTIVATE         = 0x0006;
         public const int WM_WINDOWPOSCHANGED = 0x0047;

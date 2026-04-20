@@ -270,11 +270,15 @@ namespace AppAppBar3
         {
             StopAutohideTimer();
 
-            Debug.WriteLine($"[ApplyDocked] edge={edge} barSizeScaled={barSizeScaled} " +
-                $"monitorScale={targetMonitor.scale} MonitorRect=({targetMonitor.MonitorRect.left},{targetMonitor.MonitorRect.top})-" +
+            int winDpi = GetDpiForWindow(hWnd);
+            string hdr = $"[ApplyDocked] edge={edge} barSizeScaled={barSizeScaled} " +
+                $"monitorScale={targetMonitor.scale} windowDpi={winDpi} " +
+                $"MonitorRect=({targetMonitor.MonitorRect.left},{targetMonitor.MonitorRect.top})-" +
                 $"({targetMonitor.MonitorRect.right},{targetMonitor.MonitorRect.bottom}) " +
                 $"WorkRect=({targetMonitor.WorkRect.left},{targetMonitor.WorkRect.top})-" +
-                $"({targetMonitor.WorkRect.right},{targetMonitor.WorkRect.bottom})");
+                $"({targetMonitor.WorkRect.right},{targetMonitor.WorkRect.bottom})";
+            Debug.WriteLine(hdr);
+            SettingMethods.FileLog(hdr);
 
             var abd = new APPBARDATA();
             abd.cbSize = Marshal.SizeOf(typeof(APPBARDATA));
@@ -287,14 +291,14 @@ namespace AppAppBar3
             // proposal, and it does so asymmetrically for Left vs Right.
             abd.rc = targetMonitor.MonitorRect;
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
-            Debug.WriteLine($"[ApplyDocked] pre-QUERYPOS rc=({abd.rc.left},{abd.rc.top})-({abd.rc.right},{abd.rc.bottom}) w={abd.rc.right - abd.rc.left}");
+            LogRect("pre-QUERYPOS", abd.rc);
 
             SHAppBarMessage((int)AppBarMessages.ABM_QUERYPOS, ref abd);
-            Debug.WriteLine($"[ApplyDocked] post-QUERYPOS rc=({abd.rc.left},{abd.rc.top})-({abd.rc.right},{abd.rc.bottom}) w={abd.rc.right - abd.rc.left}");
+            LogRect("post-QUERYPOS", abd.rc);
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
-            Debug.WriteLine($"[ApplyDocked] post-SETPOS rc=({abd.rc.left},{abd.rc.top})-({abd.rc.right},{abd.rc.bottom}) w={abd.rc.right - abd.rc.left}");
+            LogRect("post-SETPOS", abd.rc);
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
@@ -308,14 +312,20 @@ namespace AppAppBar3
 
             int moveW = abd.rc.right - abd.rc.left;
             int moveH = abd.rc.bottom - abd.rc.top;
-            Debug.WriteLine($"[ApplyDocked] MoveWindow({abd.rc.left},{abd.rc.top},{moveW},{moveH})");
+            string moveLine = $"[ApplyDocked] MoveWindow({abd.rc.left},{abd.rc.top},{moveW},{moveH})";
+            Debug.WriteLine(moveLine);
+            SettingMethods.FileLog(moveLine);
             if (!MoveWindow(hWnd, abd.rc.left, abd.rc.top, moveW, moveH, true))
             {
                 LogWin32Error("MoveWindow (docked)");
             }
 
             if (GetWindowRect(hWnd, out RECT actual))
-                Debug.WriteLine($"[ApplyDocked] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left} h={actual.bottom - actual.top}");
+            {
+                string actualLine = $"[ApplyDocked] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left} h={actual.bottom - actual.top}";
+                Debug.WriteLine(actualLine);
+                SettingMethods.FileLog(actualLine);
+            }
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
@@ -329,6 +339,13 @@ namespace AppAppBar3
                 case ABEdge.Top:    rc.bottom = rc.top + thickness; break;
                 case ABEdge.Bottom: rc.top    = rc.bottom - thickness; break;
             }
+        }
+
+        private static void LogRect(string label, RECT r)
+        {
+            string line = $"[ApplyDocked] {label} rc=({r.left},{r.top})-({r.right},{r.bottom}) w={r.right - r.left} h={r.bottom - r.top}";
+            Debug.WriteLine(line);
+            SettingMethods.FileLog(line);
         }
 
         private void ApplyAutohide(IntPtr hWnd, ABEdge edge, Monitor targetMonitor, int barSizeScaled)
@@ -409,9 +426,12 @@ namespace AppAppBar3
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-            Debug.WriteLine($"[ApplyAutohide] edge={edge} barSizeScaled={barSizeScaled} scale={scale} triggerPx={triggerPx} " +
+            int winDpiAh = GetDpiForWindow(hWnd);
+            string ahLine = $"[ApplyAutohide] edge={edge} barSizeScaled={barSizeScaled} scale={scale} windowDpi={winDpiAh} triggerPx={triggerPx} " +
                 $"shown=({shownRect.left},{shownRect.top})-({shownRect.right},{shownRect.bottom}) w={shownRect.right - shownRect.left} " +
-                $"hidden=({hiddenRect.left},{hiddenRect.top})-({hiddenRect.right},{hiddenRect.bottom}) w={hiddenRect.right - hiddenRect.left}");
+                $"hidden=({hiddenRect.left},{hiddenRect.top})-({hiddenRect.right},{hiddenRect.bottom}) w={hiddenRect.right - hiddenRect.left}";
+            Debug.WriteLine(ahLine);
+            SettingMethods.FileLog(ahLine);
 
             SetWindowPos(hWnd, HWND_TOPMOST,
                 hiddenRect.left, hiddenRect.top,
@@ -420,7 +440,11 @@ namespace AppAppBar3
                 SWP_NOACTIVATE);
 
             if (GetWindowRect(hWnd, out RECT actual))
-                Debug.WriteLine($"[ApplyAutohide] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left}");
+            {
+                string actualAh = $"[ApplyAutohide] actual GetWindowRect=({actual.left},{actual.top})-({actual.right},{actual.bottom}) w={actual.right - actual.left}";
+                Debug.WriteLine(actualAh);
+                SettingMethods.FileLog(actualAh);
+            }
             autohideState = AutohideState.Hidden;
             cursorLeftShownAt = DateTime.MaxValue;
 
