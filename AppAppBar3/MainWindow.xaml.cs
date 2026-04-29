@@ -173,13 +173,6 @@ namespace AppAppBar3
                     int value = 0x01;
                     int hr = DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_EXCLUDED_FROM_PEEK, ref value, Marshal.SizeOf(typeof(int)));
 
-                    // Suppress the residual 1-px window frame that Win11 paints even
-                    // after WS_CAPTION/WS_THICKFRAME are stripped. DWMWA_BORDER_COLOR
-                    // accepts DWMWA_COLOR_NONE to disable the border outright.
-                    // Ignored on Win10 — call is a safe no-op.
-                    int noBorder = unchecked((int)DWMWA_COLOR_NONE);
-                    DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_BORDER_COLOR, ref noBorder, Marshal.SizeOf(typeof(int)));
-
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
                 {
@@ -327,37 +320,13 @@ namespace AppAppBar3
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
         }
 
-        // Strips every standard / extended style that paints a window border or
-        // sunken edge. WS_CAPTION already covers WS_BORDER|WS_DLGFRAME; the
-        // extended styles cover the 1-px sunken / raised edges that survive a
-        // plain GWL_STYLE strip on some systems.
+        // Strips WS_CAPTION (covers WS_BORDER|WS_DLGFRAME) and WS_THICKFRAME so the
+        // docked AppBar has no caption, no sizing frame, and no system-painted edge.
         private static void StripFrameStyles(IntPtr hWnd)
         {
             IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
             style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
             SetWindowLong(hWnd, GWL_STYLE, style);
-
-            IntPtr ex = GetWindowLong(hWnd, GWL_EXSTYLE);
-            ex = (IntPtr)(ex.ToInt64() & ~(WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE
-                                          | WS_EX_STATICEDGE | WS_EX_DLGMODALFRAME));
-            SetWindowLong(hWnd, GWL_EXSTYLE, ex);
-
-            // Tell DWM not to render non-client area for this window at all. This
-            // is stronger than DwmExtendFrameIntoClientArea(0,0,0,0): NCRENDERING_POLICY
-            // = DISABLED suppresses DWM's frame paint outright. The earlier extend
-            // call wasn't enough on its own to remove the residual 1-px border.
-            int ncrp = 1; // DWMNCRP_DISABLED
-            DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_NCRENDERING_POLICY, ref ncrp, sizeof(int));
-
-            // Win11: square the corners. Rounded-corner anti-aliasing at the screen-
-            // edge corners reads as a thin gap when the AppBar is docked tight.
-            int corner = DWMWCP_DONOTROUND;
-            DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
-
-            // Tell DWM not to extend any glass/frame into the client area. Belt-and-
-            // suspenders alongside NCRENDERING_POLICY above.
-            var noFrame = new MARGINS();
-            DwmExtendFrameIntoClientArea(hWnd, ref noFrame);
         }
 
         private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness)
