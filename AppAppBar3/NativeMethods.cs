@@ -471,9 +471,14 @@ namespace AppAppBar3
             // color, or removes the border outright when set to DWMWA_COLOR_NONE
             // (0xFFFFFFFE). Ignored on Win10 — call is a safe no-op there.
             DWMWA_BORDER_COLOR = 34,
+            // Win11 22000+: 0=default, 1=donotround, 2=round, 3=roundsmall.
+            // Setting DONOTROUND on the docked AppBar removes any rounded-corner
+            // anti-aliasing that can read as a thin border at the screen-edge corners.
+            DWMWA_WINDOW_CORNER_PREFERENCE = 33,
         }
 
         public const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
+        public const int DWMWCP_DONOTROUND = 1;
         //remove window decorations by removing border, caption, titlebar etc
         //remove corner radius by removing border and caption, remove title bar
         public static void removeWindowDecoration(IntPtr hwnd)
