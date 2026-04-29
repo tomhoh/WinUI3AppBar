@@ -194,8 +194,7 @@ namespace AppAppBar3
 
                 }
                 loadShortCuts();
-
-                
+                RescaleControls();
             }
 
         }
@@ -766,11 +765,12 @@ namespace AppAppBar3
                 };
                 bi.SetSource(iconThumbnail);
 
+                double iconSize = CurrentIconSize;
                 Image ButtonImageEL = new Image()
                 {
                     Source = bi,
-                    Height = 32,
-                    Width = 32,
+                    Height = iconSize,
+                    Width = iconSize,
                  };
 
                 Button testIButton = new Button()
@@ -858,8 +858,64 @@ namespace AppAppBar3
         public void restartAppBar()
         {
             ABSetPos((ABEdge)SettingMethods.loadSettings("edge"), (string)SettingMethods.loadSettings("monitor"));
-            //ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
+            RescaleControls();
+        }
 
+        // Visual scaling baseline matches bar_size = 50: at scale 1.0 controls
+        // keep their original sizes. Smaller bars shrink controls/text/icons
+        // proportionally; larger bars grow them. Also updates VariableGrid and
+        // stPanel orientation so children flow along the bar's long axis.
+        private const int BaselineBarSize = 50;
+        private const double BaselineFontSize = 14;
+        private const double BaselineIconSize = 32;
+
+        private double CurrentScale
+        {
+            get
+            {
+                int barSize = (loadSettings("bar_size") as int?) ?? BaselineBarSize;
+                return (double)barSize / BaselineBarSize;
+            }
+        }
+
+        private double CurrentIconSize => BaselineIconSize * CurrentScale;
+
+        private void RescaleControls()
+        {
+            int barSize = (loadSettings("bar_size") as int?) ?? BaselineBarSize;
+            double scale = (double)barSize / BaselineBarSize;
+            bool horizontal = Edge == ABEdge.Top || Edge == ABEdge.Bottom;
+
+            stPanel.Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical;
+
+            if (horizontal)
+            {
+                // Horizontal bar: item height matches bar thickness, items wider for text.
+                VariableGrid.Orientation = Orientation.Horizontal;
+                VariableGrid.ItemHeight = barSize;
+                VariableGrid.ItemWidth  = barSize * 2;
+            }
+            else
+            {
+                // Vertical bar: square cells stack down the bar's width.
+                VariableGrid.Orientation = Orientation.Vertical;
+                VariableGrid.ItemWidth  = barSize;
+                VariableGrid.ItemHeight = barSize;
+            }
+
+            webButton.FontSize = BaselineFontSize * scale;
+
+            // Shortcut buttons live as direct children of stPanel (not VariableGrid);
+            // scale their Image content so the button auto-sizes to match.
+            double iconSize = CurrentIconSize;
+            foreach (var child in stPanel.Children)
+            {
+                if (child is Button btn && btn.Content is Image img)
+                {
+                    img.Width  = iconSize;
+                    img.Height = iconSize;
+                }
+            }
         }
         Settings settingsWindow;
 
@@ -933,22 +989,8 @@ namespace AppAppBar3
 
         private void relocateWindowLocation(ABEdge theSelectedEdge)
         {
-            Debug.WriteLine("This is the edge var "+Edge);
-
-
-              ABSetPos(theSelectedEdge, loadSettings("monitor") as string);
-            if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
-            {
-                Debug.WriteLine("Edge Selection " + Edge);
-
-                stPanel.Orientation = Orientation.Horizontal;
-            }
-            else
-            {
-                stPanel.Orientation = Orientation.Vertical;
-            }
-
-           
+            ABSetPos(theSelectedEdge, loadSettings("monitor") as string);
+            RescaleControls();
             if (webWindow != null)
             {
                 DockToAppBar(webWindow);
