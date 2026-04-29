@@ -130,11 +130,9 @@ namespace AppAppBar3
             this.AppWindow.IsShownInSwitchers = false;
             monitorInfo = GetMonitorsInfo();
             MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
-            edgeMonitor.DataContext = this;
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
             taskbarCreatedMsg = RegisterWindowMessage("TaskbarCreated");
-            edgeMonitor.ItemsSource = Enum.GetValues(typeof(ABEdge));
         }
        
 
@@ -150,7 +148,6 @@ namespace AppAppBar3
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
 
-            edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
             // selectedItemsText = @"\\.\DISPLAY1";
 
             if (appWindow == null)
@@ -164,7 +161,7 @@ namespace AppAppBar3
                     SettingMethods.setDefaultValues();
                 }
                 MigrateLegacyMonitorSetting();
-                edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
+                Edge = (ABEdge)loadSettings("edge");
                
                 
                 Debug.WriteLine("Window activated edge from settings " + (ABEdge)loadSettings("edge"));
@@ -203,7 +200,6 @@ namespace AppAppBar3
                     }
 
                 }
-                edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
                 loadShortCuts();
 
                 
@@ -313,9 +309,7 @@ namespace AppAppBar3
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
-            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
-            SetWindowLong(hWnd, GWL_STYLE, style);
+            StripFrameStyles(hWnd);
             // SWP_FRAMECHANGED commits the style change and forces WM_NCCALCSIZE before
             // the move so the window doesn't retain non-client metrics from the old frame.
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
@@ -331,6 +325,22 @@ namespace AppAppBar3
             }
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+        }
+
+        // Strips every standard / extended style that paints a window border or
+        // sunken edge. WS_CAPTION already covers WS_BORDER|WS_DLGFRAME; the
+        // extended styles cover the 1-px sunken / raised edges that survive a
+        // plain GWL_STYLE strip on some systems.
+        private static void StripFrameStyles(IntPtr hWnd)
+        {
+            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
+            SetWindowLong(hWnd, GWL_STYLE, style);
+
+            IntPtr ex = GetWindowLong(hWnd, GWL_EXSTYLE);
+            ex = (IntPtr)(ex.ToInt64() & ~(WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE
+                                          | WS_EX_STATICEDGE | WS_EX_DLGMODALFRAME));
+            SetWindowLong(hWnd, GWL_EXSTYLE, ex);
         }
 
         private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness)
@@ -416,9 +426,7 @@ namespace AppAppBar3
                 case ABEdge.Bottom: triggerRect.top    = mon.bottom - triggerPx; break;
             }
 
-            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
-            SetWindowLong(hWnd, GWL_STYLE, style);
+            StripFrameStyles(hWnd);
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -594,7 +602,7 @@ namespace AppAppBar3
                 switch (e.Message.WParam)
                 {
                     case (int)ABNotify.ABN_POSCHANGED:
-                        relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
+                        relocateWindowLocation(Edge);
                         break;
 
                     case (int)ABNotify.ABN_FULLSCREENAPP:
@@ -644,7 +652,7 @@ namespace AppAppBar3
                 case WM_DISPLAYCHANGE:
                     MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
                     // Rebuild our registration on the current edge/monitor (may have been disconnected).
-                    if (fBarRegistered) relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
+                    if (fBarRegistered) relocateWindowLocation(Edge);
                     break;
             }
         }
@@ -923,8 +931,8 @@ namespace AppAppBar3
                           }
         }
 
-        // Dock-menu handlers — set Edge in settings, sync the (still-present) edge
-        // ComboBox via its SelectionChanged path, and reposition the AppBar.
+        // Dock-menu handlers — persist the new edge, update the bound Edge
+        // property, and reposition the AppBar.
         private void DockTop_Click(object sender, RoutedEventArgs e)    => SetEdge(ABEdge.Top);
         private void DockRight_Click(object sender, RoutedEventArgs e)  => SetEdge(ABEdge.Right);
         private void DockBottom_Click(object sender, RoutedEventArgs e) => SetEdge(ABEdge.Bottom);
@@ -934,13 +942,7 @@ namespace AppAppBar3
         {
             saveSetting("edge", (int)edge);
             Edge = edge;
-            // Assigning SelectedItem fires edgeComboBox_SelectionChanged which
-            // does the actual ABSetPos call — no need to call relocateWindowLocation
-            // here. If the value is already selected, force the relocate manually.
-            if (edgeMonitor.SelectedItem is ABEdge cur && cur == edge)
-                relocateWindowLocation(edge);
-            else
-                edgeMonitor.SelectedItem = edge;
+            relocateWindowLocation(edge);
         }
 
         private void relocateWindowLocation(ABEdge theSelectedEdge)
@@ -965,14 +967,6 @@ namespace AppAppBar3
             {
                 DockToAppBar(webWindow);
             }
-        }
-        private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-           Edge = ((ABEdge)edgeMonitor.SelectedItem);
-            Debug.WriteLine("This is the selecteditem edge "+Edge);
-            relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-            Debug.WriteLine("Edge Selection Changed********** "+ Edge);
-           
         }
         WebWindow webWindow;
         private void openWebWindow(object sender, RoutedEventArgs e)

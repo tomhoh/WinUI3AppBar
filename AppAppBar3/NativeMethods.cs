@@ -13,8 +13,13 @@ namespace AppAppBar3
     {
 
         public const int GWL_STYLE = -16;
+        public const int GWL_EXSTYLE = -20;
         public const int WS_CAPTION = 0x00C00000;
         public const int WS_THICKFRAME = 0x00040000;
+        public const int WS_EX_DLGMODALFRAME = 0x00000001;
+        public const int WS_EX_WINDOWEDGE    = 0x00000100;
+        public const int WS_EX_CLIENTEDGE    = 0x00000200;
+        public const int WS_EX_STATICEDGE    = 0x00020000;
 
         [DllImport("shell32.dll", SetLastError = true)]
         public static extern IntPtr SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
