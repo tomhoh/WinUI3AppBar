@@ -130,7 +130,6 @@ namespace AppAppBar3
             this.AppWindow.IsShownInSwitchers = false;
             monitorInfo = GetMonitorsInfo();
             MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
-            cbMonitor.DataContext = this;
             edgeMonitor.DataContext = this;
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
@@ -151,7 +150,6 @@ namespace AppAppBar3
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
 
-            cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
             edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
             // selectedItemsText = @"\\.\DISPLAY1";
 
@@ -167,7 +165,6 @@ namespace AppAppBar3
                 }
                 MigrateLegacyMonitorSetting();
                 edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
-                cbMonitor.SelectedItem = (string)loadSettings("monitor");
                
                 
                 Debug.WriteLine("Window activated edge from settings " + (ABEdge)loadSettings("edge"));
@@ -178,6 +175,13 @@ namespace AppAppBar3
                 //remove from aero peek
                     int value = 0x01;
                     int hr = DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_EXCLUDED_FROM_PEEK, ref value, Marshal.SizeOf(typeof(int)));
+
+                    // Suppress the residual 1-px window frame that Win11 paints even
+                    // after WS_CAPTION/WS_THICKFRAME are stripped. DWMWA_BORDER_COLOR
+                    // accepts DWMWA_COLOR_NONE to disable the border outright.
+                    // Ignored on Win10 — call is a safe no-op.
+                    int noBorder = unchecked((int)DWMWA_COLOR_NONE);
+                    DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_BORDER_COLOR, ref noBorder, Marshal.SizeOf(typeof(int)));
 
                 // Ensure we only register the app bar once
                 if (args.WindowActivationState != WindowActivationState.Deactivated)
@@ -200,7 +204,6 @@ namespace AppAppBar3
 
                 }
                 edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
-                cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
                 loadShortCuts();
 
                 
@@ -212,7 +215,7 @@ namespace AppAppBar3
 
         // settings.json from older builds stored the Win32 device path
         // ("\\.\DISPLAY1"). Convert to the new "Display N" form once so the
-        // saved monitor matches an item in cbMonitor's ItemsSource.
+        // saved monitor matches a MonitorList entry.
         private static void MigrateLegacyMonitorSetting()
         {
             if (loadSettings("monitor") is string saved
@@ -639,11 +642,7 @@ namespace AppAppBar3
                     break;
 
                 case WM_DISPLAYCHANGE:
-                    var selectedMon = cbMonitor.SelectedItem as string;
-                    cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
                     MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
-                    cbMonitor.SelectedItem = selectedMon;
-                    cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
                     // Rebuild our registration on the current edge/monitor (may have been disconnected).
                     if (fBarRegistered) relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
                     break;
@@ -924,19 +923,32 @@ namespace AppAppBar3
                           }
         }
 
-        private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-            selectedItemsText = (cbMonitor.SelectedItem as String);
-        }
+        // Dock-menu handlers — set Edge in settings, sync the (still-present) edge
+        // ComboBox via its SelectionChanged path, and reposition the AppBar.
+        private void DockTop_Click(object sender, RoutedEventArgs e)    => SetEdge(ABEdge.Top);
+        private void DockRight_Click(object sender, RoutedEventArgs e)  => SetEdge(ABEdge.Right);
+        private void DockBottom_Click(object sender, RoutedEventArgs e) => SetEdge(ABEdge.Bottom);
+        private void DockLeft_Click(object sender, RoutedEventArgs e)   => SetEdge(ABEdge.Left);
 
+        private void SetEdge(ABEdge edge)
+        {
+            saveSetting("edge", (int)edge);
+            Edge = edge;
+            // Assigning SelectedItem fires edgeComboBox_SelectionChanged which
+            // does the actual ABSetPos call — no need to call relocateWindowLocation
+            // here. If the value is already selected, force the relocate manually.
+            if (edgeMonitor.SelectedItem is ABEdge cur && cur == edge)
+                relocateWindowLocation(edge);
+            else
+                edgeMonitor.SelectedItem = edge;
+        }
 
         private void relocateWindowLocation(ABEdge theSelectedEdge)
         {
             Debug.WriteLine("This is the edge var "+Edge);
-            
-           
-              ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
+
+
+              ABSetPos(theSelectedEdge, loadSettings("monitor") as string);
             if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
             {
                 Debug.WriteLine("Edge Selection " + Edge);
@@ -988,8 +1000,9 @@ namespace AppAppBar3
             bool isSettings = wappWindow.Title == "Settings";
 
             Monitor mon = null;
+            var savedMonitor = loadSettings("monitor") as string;
             foreach (var m in monitorInfo)
-                if (m.MonitorName == cbMonitor.SelectedItem as string) { mon = m; break; }
+                if (m.MonitorName == savedMonitor) { mon = m; break; }
             if (mon == null) return;
 
             int x, y, w, h;

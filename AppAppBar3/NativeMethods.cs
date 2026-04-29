@@ -450,7 +450,13 @@ namespace AppAppBar3
             // for dark mode. Out of order in the source enum because the Win10
             // header defined it long after DWMWA_LAST was named.
             DWMWA_USE_IMMERSIVE_DARK_MODE = 20,
+            // Win32 attribute id 34 (Win11 Build 22000+): sets the window border
+            // color, or removes the border outright when set to DWMWA_COLOR_NONE
+            // (0xFFFFFFFE). Ignored on Win10 — call is a safe no-op there.
+            DWMWA_BORDER_COLOR = 34,
         }
+
+        public const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
         //remove window decorations by removing border, caption, titlebar etc
         //remove corner radius by removing border and caption, remove title bar
         public static void removeWindowDecoration(IntPtr hwnd)
