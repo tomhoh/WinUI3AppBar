@@ -61,9 +61,12 @@
 
             <VariableSizedWrapGrid Orientation="Horizontal"  x:Name="VariableGrid" AllowDrop="False" DragOver="Grid_DragOver" Drop="Grid_Drop" CanDrag="True" MaximumRowsOrColumns="120" ItemHeight="50" ItemWidth="100" HorizontalAlignment="Left" HorizontalChildrenAlignment="Left" >
 
-            <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow" Width="{Binding ItemWidth, ElementName=VariableGrid}">
-
-                </ToggleButton>
+            <ToggleButton x:Name="webButton" Click="openWebWindow"
+                          Background="Transparent" BorderBrush="Transparent"
+                          Padding="0"
+                          Width="{Binding ItemWidth, ElementName=VariableGrid}">
+                <SymbolIcon x:Name="webIcon" Symbol="Globe"/>
+            </ToggleButton>
 
 
         </VariableSizedWrapGrid>
