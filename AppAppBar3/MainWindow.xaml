@@ -65,7 +65,7 @@
                           Background="Transparent" BorderBrush="Transparent"
                           Padding="0"
                           Width="{Binding ItemWidth, ElementName=VariableGrid}">
-                <SymbolIcon x:Name="webIcon" Symbol="Globe"/>
+                <FontIcon x:Name="webIcon" Glyph="&#xE774;"/>
             </ToggleButton>
 
 
