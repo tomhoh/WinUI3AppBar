@@ -15,6 +15,7 @@ namespace AppAppBar3
         {
             
             this.InitializeComponent();
+            ThemeHelper.Register(this);
             InitializeWebView();
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WindowId windowId = Win32Interop.GetWindowIdFromWindow(hwnd);

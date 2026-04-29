@@ -64,6 +64,7 @@ namespace AppAppBar3
             saveSetting("LoadOnStartup", true);
             saveSetting("edge", 1);
             saveSetting("autohide", false);
+            saveSetting("theme", "Default");
         }
 
         public static void saveSetting(string setting, object value)

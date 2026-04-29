@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [Experimental, master]
+    branches: [Experimental, Experimental-2, master]
   pull_request:
     branches: [master]
   workflow_dispatch:
