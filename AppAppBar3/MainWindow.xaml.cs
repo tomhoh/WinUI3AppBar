@@ -902,8 +902,8 @@ namespace AppAppBar3
                 VariableGrid.ItemHeight = barSize;
             }
 
-            // SymbolIcon size is driven by its own FontSize (it doesn't inherit
-            // from the parent ToggleButton). Default SymbolIcon FontSize is 20.
+            // FontIcon size is driven by its own FontSize property (SymbolIcon
+            // doesn't expose one). Default FontIcon FontSize is 20.
             webIcon.FontSize = 20 * scale;
 
             // Shortcut buttons live as direct children of stPanel (not VariableGrid);
