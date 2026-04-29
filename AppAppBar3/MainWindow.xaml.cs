@@ -342,9 +342,15 @@ namespace AppAppBar3
                                           | WS_EX_STATICEDGE | WS_EX_DLGMODALFRAME));
             SetWindowLong(hWnd, GWL_EXSTYLE, ex);
 
-            // Tell DWM not to extend any glass/frame into the client area. With the
-            // style strips above, this eliminates the residual 1-px non-client paint
-            // that survives WS_CAPTION/WS_THICKFRAME removal.
+            // Tell DWM not to render non-client area for this window at all. This
+            // is stronger than DwmExtendFrameIntoClientArea(0,0,0,0): NCRENDERING_POLICY
+            // = DISABLED suppresses DWM's frame paint outright. The earlier extend
+            // call wasn't enough on its own to remove the residual 1-px border.
+            int ncrp = 1; // DWMNCRP_DISABLED
+            DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_NCRENDERING_POLICY, ref ncrp, sizeof(int));
+
+            // Tell DWM not to extend any glass/frame into the client area. Belt-and-
+            // suspenders alongside NCRENDERING_POLICY above.
             var noFrame = new MARGINS();
             DwmExtendFrameIntoClientArea(hWnd, ref noFrame);
         }
@@ -999,9 +1005,13 @@ namespace AppAppBar3
             var wappWindow = webW.GetAppWindow();
             bool isSettings = wappWindow.Title == "Settings";
 
+            // Re-query monitor info every time. The constructor-time monitorInfo was
+            // captured before our AppBar registered, so its WorkRect doesn't subtract
+            // our reservation — using it here would overlap WebWindow with the AppBar.
+            var fresh = GetMonitorsInfo();
             Monitor mon = null;
             var savedMonitor = loadSettings("monitor") as string;
-            foreach (var m in monitorInfo)
+            foreach (var m in fresh)
                 if (m.MonitorName == savedMonitor) { mon = m; break; }
             if (mon == null) return;
 
