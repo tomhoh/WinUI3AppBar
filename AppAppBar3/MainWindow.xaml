@@ -64,8 +64,13 @@
             <ToggleButton x:Name="webButton" Click="openWebWindow"
                           Background="Transparent" BorderBrush="Transparent"
                           Padding="0"
-                          UseSystemFocusVisuals="False"
-                          Width="{Binding ItemWidth, ElementName=VariableGrid}">
+                          Margin="2"
+                          CornerRadius="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center"
+                          UseSystemFocusVisuals="False">
                 <!--
                     Suppress every visual-state brush ToggleButton picks up from
                     the theme (PointerOver / Pressed / Checked / their Disabled
