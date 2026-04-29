@@ -200,13 +200,7 @@ namespace AppAppBar3
             saveSetting("edge", (int)cbEdgeSettings.SelectedItem);
         }
 
-        private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        {
-            parentWindow.closeSettingsWindow();
-            //this.Close();
-        }
 
-       
 
         private async void loadOnStartupCheckBox_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
