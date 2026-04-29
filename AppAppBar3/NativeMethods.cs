@@ -445,7 +445,11 @@ namespace AppAppBar3
             DWMWA_CLOAK,
             DWMWA_CLOAKED,
             DWMWA_FREEZE_REPRESENTATION,
-            DWMWA_LAST
+            DWMWA_LAST,
+            // Win32 attribute id 20: tints the non-client caption (and its buttons)
+            // for dark mode. Out of order in the source enum because the Win10
+            // header defined it long after DWMWA_LAST was named.
+            DWMWA_USE_IMMERSIVE_DARK_MODE = 20,
         }
         //remove window decorations by removing border, caption, titlebar etc
         //remove corner radius by removing border and caption, remove title bar

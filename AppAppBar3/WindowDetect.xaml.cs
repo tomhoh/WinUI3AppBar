@@ -30,6 +30,7 @@ namespace AppAppBar3
         public WindowDetect(string Text)
         {
             this.InitializeComponent();
+            ThemeHelper.Register(this);
             SetTimer();
             DisplayText.Text = Text;
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
