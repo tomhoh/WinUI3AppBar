@@ -18,7 +18,27 @@
 
 
     <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
-        
+        <StackPanel.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="Settings" Click="Settings_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="Setting"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Identify Monitor" Click="DetectWindow_click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7F4;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Close AppBar" Click="CloseButton_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="Cancel"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </StackPanel.ContextFlyout>
+
             <VariableSizedWrapGrid Orientation="Horizontal"  x:Name="VariableGrid" AllowDrop="False" DragOver="Grid_DragOver" Drop="Grid_Drop" CanDrag="True" MaximumRowsOrColumns="120" ItemHeight="50" ItemWidth="100" HorizontalAlignment="Left" HorizontalChildrenAlignment="Left" >
 
             <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow" Width="{Binding ItemWidth, ElementName=VariableGrid}">
@@ -27,12 +47,11 @@
 
 
             <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedItem="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"  SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Top" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
-                    
+
                 </ComboBox>
             <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding ListOfMonitors, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
 
                </ComboBox>
-                <Button Content="Close" Margin="0,0,0,0" Click="CloseButton_Click" Width="{Binding ItemWidth, ElementName=VariableGrid}"/>
             <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" MinWidth="{Binding ItemWidth, ElementName=VariableGrid}">
                 <AppBarButton Icon="DockRight" Label="Right"/>
                 <AppBarButton Icon="DockBottom" Label="Bottom"/>

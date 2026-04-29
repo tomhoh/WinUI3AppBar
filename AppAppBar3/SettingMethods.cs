@@ -60,7 +60,7 @@ namespace AppAppBar3
         public static void setDefaultValues()
         {
             saveSetting("bar_size", 50);
-            saveSetting("monitor", @"\\.\DISPLAY1");
+            saveSetting("monitor", "Display 1");
             saveSetting("LoadOnStartup", true);
             saveSetting("edge", 1);
             saveSetting("autohide", false);
