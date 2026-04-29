@@ -176,12 +176,12 @@ namespace AppAppBar3
                 appWindow = AppWindow.GetFromWindowId(windowId);
 
                 // The OverlappedPresenter still draws a thin window border even
-                // after we strip WS_CAPTION/WS_THICKFRAME via SetWindowLong; this
-                // is the WinAppSDK-native way to suppress it.
+                // after we strip WS_CAPTION/WS_THICKFRAME via SetWindowLong;
+                // SetBorderAndTitleBar is the WinAppSDK-native way to suppress
+                // it (HasBorder/HasTitleBar themselves are read-only in 1.x).
                 if (appWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter op)
                 {
-                    op.HasBorder = false;
-                    op.HasTitleBar = false;
+                    op.SetBorderAndTitleBar(false, false);
                 }
 
                 //remove from aero peek
