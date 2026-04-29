@@ -20,14 +20,35 @@
     <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
         <StackPanel.ContextFlyout>
             <MenuFlyout>
-                <MenuFlyoutItem Text="Settings" Click="Settings_Click">
+                <MenuFlyoutItem Text="Dock Top" Click="DockTop_Click">
                     <MenuFlyoutItem.Icon>
-                        <SymbolIcon Symbol="Setting"/>
+                        <SymbolIcon Symbol="Up"/>
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Dock Right" Click="DockRight_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="DockRight"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Dock Bottom" Click="DockBottom_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="DockBottom"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Dock Left" Click="DockLeft_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="DockLeft"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
                 <MenuFlyoutItem Text="Identify Monitor" Click="DetectWindow_click">
                     <MenuFlyoutItem.Icon>
                         <FontIcon Glyph="&#xE7F4;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Settings" Click="Settings_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="Setting"/>
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
@@ -49,22 +70,6 @@
             <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedItem="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"  SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Top" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
 
                 </ComboBox>
-            <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding ListOfMonitors, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
-
-               </ComboBox>
-            <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" MinWidth="{Binding ItemWidth, ElementName=VariableGrid}">
-                <AppBarButton Icon="DockRight" Label="Right"/>
-                <AppBarButton Icon="DockBottom" Label="Bottom"/>
-                <AppBarButton Icon="DockLeft" Label="Left"/>
-                <AppBarButton  Label="Identify Monitor" Click="DetectWindow_click">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE7F4;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-
-                <AppBarButton Icon="Setting" Label="Settings" Click="Settings_Click"/>
-
-            </CommandBar>
         </VariableSizedWrapGrid>
             
         </StackPanel>
