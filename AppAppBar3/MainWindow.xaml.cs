@@ -119,6 +119,7 @@ namespace AppAppBar3
         {
 
             this.InitializeComponent();
+            ThemeHelper.Register(this);
             // Override the XAML MinWidth/MinHeight floor — WinUIEx.WindowEx's
             // WM_WINDOWPOSCHANGING interceptor was clamping our Left/Right bar up to
             // ~132 DIPs even when we asked for 50, because MinWidth=25 in XAML wasn't

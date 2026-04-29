@@ -33,6 +33,7 @@ namespace AppAppBar3
             appBarCallBack = appBarCall;
             parentWindow = Parent;
             this.InitializeComponent();
+            ThemeHelper.Register(this);
             this.Activated += OnActivated;
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
@@ -57,6 +58,19 @@ namespace AppAppBar3
 
             var autohideSetting = loadSettings("autohide");
             autohideCheckBox.IsChecked = autohideSetting is bool b && b;
+
+            // Populate theme picker after the constructor sets the saved selection,
+            // so cbThemeSettings_SelectionChanged doesn't fire during initial load.
+            cbThemeSettings.SelectionChanged -= cbThemeSettings_SelectionChanged;
+            cbThemeSettings.ItemsSource = Enum.GetValues(typeof(ElementTheme));
+            cbThemeSettings.SelectedItem = ThemeHelper.LoadSavedTheme();
+            cbThemeSettings.SelectionChanged += cbThemeSettings_SelectionChanged;
+        }
+
+        private void cbThemeSettings_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (cbThemeSettings.SelectedItem is ElementTheme t)
+                ThemeHelper.SaveAndApply(t);
         }
 
         private void autohideCheckBox_Click(object sender, RoutedEventArgs e)
