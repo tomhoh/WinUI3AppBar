@@ -10,11 +10,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="Settings"
-    Height="560"
+    Height="450"
     Width="300"
     IsShownInSwitchers="False">
 
-    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" Height="560" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
+    <StackPanel Background="{ThemeResource SystemChromeMediumLowColor}" Height="450" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Vertical">
         
           
         <TextBlock Margin="10,10,0,0">Startup Edge:</TextBlock>
@@ -36,7 +36,6 @@
             <CheckBox x:Name="autohideCheckBox" Click="autohideCheckBox_Click" Margin="10,10,0,0" Content="Auto-hide" IsTabStop="False"></CheckBox>
             <TextBlock Margin="10,10,0,0">Theme:</TextBlock>
             <ComboBox x:Name="cbThemeSettings" Margin="10,10,0,0" Width="200" MinWidth="200" SelectionChanged="cbThemeSettings_SelectionChanged"/>
-            <Button x:Name="closeSettingsButton" Margin="220,70,0,0" Content="Close" Click="closeSettingsButton_Click"/>
         
 
 
