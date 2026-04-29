@@ -767,6 +767,7 @@ namespace AppAppBar3
                 bi.SetSource(iconThumbnail);
 
                 double iconSize = CurrentIconSize;
+                int barSize = (loadSettings("bar_size") as int?) ?? BaselineBarSize;
                 Image ButtonImageEL = new Image()
                 {
                     Source = bi,
@@ -774,10 +775,19 @@ namespace AppAppBar3
                     Width = iconSize,
                  };
 
+                // Constrain to a square the size of the bar so the button can't
+                // overflow the bar's narrow axis (vertical dock) — the theme's
+                // default Button Padding adds ~22 px horizontally and would
+                // otherwise clip the icon when the bar is docked Left or Right.
                 Button testIButton = new Button()
                 {
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderBrush = new SolidColorBrush(Colors.Transparent),
+                    Padding = new Thickness(0),
+                    Width = barSize,
+                    Height = barSize,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
                     Content = ButtonImageEL,
                     Tag = aPath,
                  };
@@ -936,15 +946,19 @@ namespace AppAppBar3
             // doesn't expose one). Default FontIcon FontSize is 20.
             webIcon.FontSize = 20 * scale;
 
-            // Shortcut buttons live as direct children of stPanel (not VariableGrid);
-            // scale their Image content so the button auto-sizes to match.
+            // Shortcut buttons live as direct children of stPanel (not VariableGrid).
+            // Pin them to barSize x barSize with zero padding so they fit the bar's
+            // narrow axis in either orientation, then scale the inner Image to match.
             double iconSize = CurrentIconSize;
             foreach (var child in stPanel.Children)
             {
                 if (child is Button btn && btn.Content is Image img)
                 {
-                    img.Width  = iconSize;
-                    img.Height = iconSize;
+                    btn.Width   = barSize;
+                    btn.Height  = barSize;
+                    btn.Padding = new Thickness(0);
+                    img.Width   = iconSize;
+                    img.Height  = iconSize;
                 }
             }
         }
