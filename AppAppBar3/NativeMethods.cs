@@ -13,13 +13,8 @@ namespace AppAppBar3
     {
 
         public const int GWL_STYLE = -16;
-        public const int GWL_EXSTYLE = -20;
         public const int WS_CAPTION = 0x00C00000;
         public const int WS_THICKFRAME = 0x00040000;
-        public const int WS_EX_DLGMODALFRAME = 0x00000001;
-        public const int WS_EX_WINDOWEDGE    = 0x00000100;
-        public const int WS_EX_CLIENTEDGE    = 0x00000200;
-        public const int WS_EX_STATICEDGE    = 0x00020000;
 
         [DllImport("shell32.dll", SetLastError = true)]
         public static extern IntPtr SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
@@ -432,18 +427,6 @@ namespace AppAppBar3
         [DllImport("dwmapi.dll")]
         public static extern int DwmSetWindowAttribute(IntPtr hwnd, DwmWindowAttribute dwAttribute, ref int pvAttribute, int cbAttribute);
 
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MARGINS
-        {
-            public int cxLeftWidth;
-            public int cxRightWidth;
-            public int cyTopHeight;
-            public int cyBottomHeight;
-        }
-
         [Flags]
         public enum DwmWindowAttribute : uint
         {
@@ -467,18 +450,7 @@ namespace AppAppBar3
             // for dark mode. Out of order in the source enum because the Win10
             // header defined it long after DWMWA_LAST was named.
             DWMWA_USE_IMMERSIVE_DARK_MODE = 20,
-            // Win32 attribute id 34 (Win11 Build 22000+): sets the window border
-            // color, or removes the border outright when set to DWMWA_COLOR_NONE
-            // (0xFFFFFFFE). Ignored on Win10 — call is a safe no-op there.
-            DWMWA_BORDER_COLOR = 34,
-            // Win11 22000+: 0=default, 1=donotround, 2=round, 3=roundsmall.
-            // Setting DONOTROUND on the docked AppBar removes any rounded-corner
-            // anti-aliasing that can read as a thin border at the screen-edge corners.
-            DWMWA_WINDOW_CORNER_PREFERENCE = 33,
         }
-
-        public const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
-        public const int DWMWCP_DONOTROUND = 1;
         //remove window decorations by removing border, caption, titlebar etc
         //remove corner radius by removing border and caption, remove title bar
         public static void removeWindowDecoration(IntPtr hwnd)
