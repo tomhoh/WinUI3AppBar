@@ -887,20 +887,11 @@ namespace AppAppBar3
 
             stPanel.Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical;
 
-            if (horizontal)
-            {
-                // Horizontal bar: item height matches bar thickness, items wider for text.
-                VariableGrid.Orientation = Orientation.Horizontal;
-                VariableGrid.ItemHeight = barSize;
-                VariableGrid.ItemWidth  = barSize * 2;
-            }
-            else
-            {
-                // Vertical bar: square cells stack down the bar's width.
-                VariableGrid.Orientation = Orientation.Vertical;
-                VariableGrid.ItemWidth  = barSize;
-                VariableGrid.ItemHeight = barSize;
-            }
+            // Square cells in both orientations so the Web icon button wraps
+            // just the icon rather than spreading across a wider rectangle.
+            VariableGrid.Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical;
+            VariableGrid.ItemWidth  = barSize;
+            VariableGrid.ItemHeight = barSize;
 
             // FontIcon size is driven by its own FontSize property (SymbolIcon
             // doesn't expose one). Default FontIcon FontSize is 20.
