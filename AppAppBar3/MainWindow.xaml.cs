@@ -349,6 +349,11 @@ namespace AppAppBar3
             int ncrp = 1; // DWMNCRP_DISABLED
             DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_NCRENDERING_POLICY, ref ncrp, sizeof(int));
 
+            // Win11: square the corners. Rounded-corner anti-aliasing at the screen-
+            // edge corners reads as a thin gap when the AppBar is docked tight.
+            int corner = DWMWCP_DONOTROUND;
+            DwmSetWindowAttribute(hWnd, DwmWindowAttribute.DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+
             // Tell DWM not to extend any glass/frame into the client area. Belt-and-
             // suspenders alongside NCRENDERING_POLICY above.
             var noFrame = new MARGINS();

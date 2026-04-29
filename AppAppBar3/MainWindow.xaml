@@ -17,7 +17,14 @@
     Closed="appbarWindow_Closed">
 
 
-    <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
+    <!--
+        Outer Grid backstops the chrome color across the entire client area so a
+        1-px gap at the window edges (where the StackPanel doesn't quite reach)
+        can't leak the default window background and read as a "border".
+        The StackPanel still handles drag/drop and hosts the context menu.
+    -->
+    <Grid Background="{ThemeResource SystemChromeMediumLowColor}">
+    <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0" Padding="0" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
         <StackPanel.ContextFlyout>
             <MenuFlyout>
                 <MenuFlyoutItem Text="Dock Top" Click="DockTop_Click">
@@ -70,9 +77,5 @@
         </VariableSizedWrapGrid>
             
         </StackPanel>
-        
-
-
-
-
+    </Grid>
 </winex:WindowEx>
