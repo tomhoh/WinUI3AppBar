@@ -341,6 +341,12 @@ namespace AppAppBar3
             ex = (IntPtr)(ex.ToInt64() & ~(WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE
                                           | WS_EX_STATICEDGE | WS_EX_DLGMODALFRAME));
             SetWindowLong(hWnd, GWL_EXSTYLE, ex);
+
+            // Tell DWM not to extend any glass/frame into the client area. With the
+            // style strips above, this eliminates the residual 1-px non-client paint
+            // that survives WS_CAPTION/WS_THICKFRAME removal.
+            var noFrame = new MARGINS();
+            DwmExtendFrameIntoClientArea(hWnd, ref noFrame);
         }
 
         private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness)
