@@ -61,16 +61,22 @@ namespace AppAppBar3
 
             // Populate theme picker after the constructor sets the saved selection,
             // so cbThemeSettings_SelectionChanged doesn't fire during initial load.
+            // Use strings rather than ElementTheme values: the WinRT projection wraps
+            // boxed enum values in IReference<T>, and ComboBox falls back to the
+            // wrapper's ToString() which shows "Windows.Foundation.IReference`1<...>".
             cbThemeSettings.SelectionChanged -= cbThemeSettings_SelectionChanged;
-            cbThemeSettings.ItemsSource = Enum.GetValues(typeof(ElementTheme));
-            cbThemeSettings.SelectedItem = ThemeHelper.LoadSavedTheme();
+            cbThemeSettings.ItemsSource = Enum.GetNames(typeof(ElementTheme));
+            cbThemeSettings.SelectedItem = ThemeHelper.LoadSavedTheme().ToString();
             cbThemeSettings.SelectionChanged += cbThemeSettings_SelectionChanged;
         }
 
         private void cbThemeSettings_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (cbThemeSettings.SelectedItem is ElementTheme t)
+            if (cbThemeSettings.SelectedItem is string s
+                && Enum.TryParse<ElementTheme>(s, out var t))
+            {
                 ThemeHelper.SaveAndApply(t);
+            }
         }
 
         private void autohideCheckBox_Click(object sender, RoutedEventArgs e)
