@@ -27,7 +27,7 @@ For running the **unpackaged** builds (not MSIX) the target machine also needs t
 - Handles per-monitor DPI scaling
 - Does not show in switcher
 - Excluded from aero peek
-- Follows current Windows desktop theme
+- Theme picker in Settings (Default / Light / Dark) — "Default" follows the current Windows theme and re-applies live when the system theme flips
 - Handles Drag and drop shortcut with deletion, autosaving and auto restore on startup
 - Option to run at login (autostart).
 - Settings persisted to `%LOCALAPPDATA%\AppAppBar3\settings.json` so packaged and unpackaged builds share the same storage.
@@ -37,9 +37,13 @@ For running the **unpackaged** builds (not MSIX) the target machine also needs t
 - Build into Library
 - code refractoring
 - Bug fixes
-- allow for custom theme (currenlty only supports current desktop theme)
 
 ## Notes
+04/29/26  Added a user-selectable theme on the **Experimental-2** branch:
+- New **Theme** picker in Settings (Default / Light / Dark). "Default" follows the current Windows theme.
+- A new `ThemeHelper` resolves "Default" against `HKCU\...\Personalize\AppsUseLightTheme` and hooks `SystemEvents.UserPreferenceChanged` so all open windows repaint immediately when the system theme flips — WinUI 3 desktop windows don't reliably do this on their own with `RequestedTheme = Default`.
+- Non-client caption (where still visible) tints via `DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE)` to match the resolved theme.
+
 04/20/26  Merged the **Experimental** branch into master. Summary of what changed:
 - Added a working **auto-hide** AppBar mode (ABM_SETAUTOHIDEBAREX + a DispatcherTimer state machine that slides the bar in/out with a ~200 ms ease-out, and suppresses itself over fullscreen apps via ABN_FULLSCREENAPP).
 - Hardened the Win32 AppBar contract: corrected ABM_ message IDs, forward WM_ACTIVATE / WM_WINDOWPOSCHANGED to the shell, re-register on TaskbarCreated (explorer restart), dispose WindowMessageMonitor, fix WM_DISPLAYCHANGE (was accidentally WM_SETFOCUS), per-monitor DPI on the autohide trigger sliver.
