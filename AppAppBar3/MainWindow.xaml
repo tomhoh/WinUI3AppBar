@@ -67,9 +67,6 @@
                 </ToggleButton>
 
 
-            <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedItem="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"  SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Top" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
-
-                </ComboBox>
         </VariableSizedWrapGrid>
             
         </StackPanel>
