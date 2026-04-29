@@ -884,17 +884,8 @@ namespace AppAppBar3
 
             if (useBackdrop)
             {
-                // Kind = Thin is the most translucent of the three DesktopAcrylic
-                // variants (Default, Base, Thin). Base is closer to the Win11
-                // taskbar's tint; Thin lets more of the desktop bleed through.
-                if (this.SystemBackdrop is not DesktopAcrylicBackdrop existing
-                    || existing.Kind != DesktopAcrylicKind.Thin)
-                {
-                    this.SystemBackdrop = new DesktopAcrylicBackdrop
-                    {
-                        Kind = DesktopAcrylicKind.Thin,
-                    };
-                }
+                if (this.SystemBackdrop == null)
+                    this.SystemBackdrop = new DesktopAcrylicBackdrop();
                 stPanel.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             }
             else
