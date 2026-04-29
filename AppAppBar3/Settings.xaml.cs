@@ -84,10 +84,22 @@ namespace AppAppBar3
             saveSetting("autohide", autohideCheckBox.IsChecked == true);
             parentWindow.restartAppBar();
         }
+        // Light-dismiss: close on focus loss (click on the AppBar, another window,
+        // the desktop, or a context-menu flyout outside our window). The
+        // _hasBeenActivated guard avoids closing during the initial Activated →
+        // Deactivated → Activated race that can happen at window startup.
+        private bool _hasBeenActivated;
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
-            
-
+            if (args.WindowActivationState == WindowActivationState.Deactivated)
+            {
+                if (_hasBeenActivated)
+                    parentWindow.closeSettingsWindow();
+            }
+            else
+            {
+                _hasBeenActivated = true;
+            }
         }
        
 
