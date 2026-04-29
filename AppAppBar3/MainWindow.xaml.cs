@@ -195,6 +195,7 @@ namespace AppAppBar3
                 }
                 loadShortCuts();
                 RescaleControls();
+                ApplyBackdropPreference();
             }
 
         }
@@ -859,6 +860,35 @@ namespace AppAppBar3
         {
             ABSetPos((ABEdge)SettingMethods.loadSettings("edge"), (string)SettingMethods.loadSettings("monitor"));
             RescaleControls();
+            ApplyBackdropPreference();
+        }
+
+        // Translucent ("taskbar-like") AppBar background. Only takes effect when
+        // the user is following the Windows theme — explicit Light/Dark uses the
+        // existing solid chrome fill so the user's color choice isn't tinted.
+        public void ApplyBackdropPreference()
+        {
+            bool wantTransparent = (loadSettings("transparency") as bool?) ?? false;
+            bool themeIsDefault = ThemeHelper.LoadSavedTheme() == ElementTheme.Default;
+            bool useBackdrop = wantTransparent && themeIsDefault;
+
+            if (useBackdrop)
+            {
+                if (this.SystemBackdrop == null)
+                    this.SystemBackdrop = new DesktopAcrylicBackdrop();
+                stPanel.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            }
+            else
+            {
+                this.SystemBackdrop = null;
+                // Restore the chrome fill. Walk stPanel-local resources first, then
+                // fall back to the app-level dictionary; either returns the active
+                // theme's value at this moment.
+                if (!stPanel.Resources.TryGetValue("SystemChromeMediumLowColor", out var res))
+                    Application.Current.Resources.TryGetValue("SystemChromeMediumLowColor", out res);
+                if (res is Windows.UI.Color color)
+                    stPanel.Background = new SolidColorBrush(color);
+            }
         }
 
         // Visual scaling baseline matches bar_size = 50: at scale 1.0 controls
