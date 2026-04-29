@@ -74,21 +74,35 @@
                     so a hover outline is still visible.
                 -->
                 <ToggleButton.Resources>
+                    <!-- Default / disabled stay transparent so the icon reads
+                         flat on the AppBar surface. -->
                     <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundPressed" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed" Color="Transparent"/>
                     <SolidColorBrush x:Key="ToggleButtonBackgroundDisabled" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushDisabled" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="Transparent"/>
                     <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedDisabled" Color="Transparent"/>
+
+                    <!-- Hover / pressed / checked use the system's "Subtle Fill"
+                         brushes — same translucent tint Windows 11 taskbar
+                         icons use. Theme-aware (light vs dark). -->
+                    <StaticResource x:Key="ToggleButtonBackgroundPointerOver"
+                                    ResourceKey="SubtleFillColorSecondaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundPressed"
+                                    ResourceKey="SubtleFillColorTertiaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundChecked"
+                                    ResourceKey="SubtleFillColorSecondaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver"
+                                    ResourceKey="SubtleFillColorSecondaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundCheckedPressed"
+                                    ResourceKey="SubtleFillColorTertiaryBrush"/>
+
+                    <!-- Borders always transparent — taskbar icons don't draw
+                         an outline in any state. -->
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushDisabled" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="Transparent"/>
                     <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedDisabled" Color="Transparent"/>
                 </ToggleButton.Resources>
                 <FontIcon x:Name="webIcon" Glyph="&#xE774;"/>
