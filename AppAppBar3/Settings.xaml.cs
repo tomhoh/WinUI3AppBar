@@ -68,6 +68,8 @@ namespace AppAppBar3
             cbThemeSettings.ItemsSource = Enum.GetNames(typeof(ElementTheme));
             cbThemeSettings.SelectedItem = ThemeHelper.LoadSavedTheme().ToString();
             cbThemeSettings.SelectionChanged += cbThemeSettings_SelectionChanged;
+
+            transparencyCheckBox.IsChecked = (loadSettings("transparency") as bool?) ?? false;
         }
 
         private void cbThemeSettings_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -76,7 +78,17 @@ namespace AppAppBar3
                 && Enum.TryParse<ElementTheme>(s, out var t))
             {
                 ThemeHelper.SaveAndApply(t);
+                // Backdrop preference depends on theme = Default; switching to
+                // Light / Dark must turn the backdrop off (and back on if user
+                // returns to Default with transparency enabled).
+                parentWindow.ApplyBackdropPreference();
             }
+        }
+
+        private void transparencyCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            saveSetting("transparency", transparencyCheckBox.IsChecked == true);
+            parentWindow.ApplyBackdropPreference();
         }
 
         private void autohideCheckBox_Click(object sender, RoutedEventArgs e)
