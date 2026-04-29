@@ -165,6 +165,7 @@ namespace AppAppBar3
                 {
                     SettingMethods.setDefaultValues();
                 }
+                MigrateLegacyMonitorSetting();
                 edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
                 cbMonitor.SelectedItem = (string)loadSettings("monitor");
                
@@ -173,6 +174,15 @@ namespace AppAppBar3
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 appWindow = AppWindow.GetFromWindowId(windowId);
+
+                // The OverlappedPresenter still draws a thin window border even
+                // after we strip WS_CAPTION/WS_THICKFRAME via SetWindowLong; this
+                // is the WinAppSDK-native way to suppress it.
+                if (appWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter op)
+                {
+                    op.HasBorder = false;
+                    op.HasTitleBar = false;
+                }
 
                 //remove from aero peek
                     int value = 0x01;
@@ -208,6 +218,20 @@ namespace AppAppBar3
         }
 
        
+
+        // settings.json from older builds stored the Win32 device path
+        // ("\\.\DISPLAY1"). Convert to the new "Display N" form once so the
+        // saved monitor matches an item in cbMonitor's ItemsSource.
+        private static void MigrateLegacyMonitorSetting()
+        {
+            if (loadSettings("monitor") is string saved
+                && saved.StartsWith(@"\\.\", StringComparison.Ordinal))
+            {
+                var migrated = MonitorHelper.FormatDisplayName(saved);
+                if (!string.Equals(migrated, saved, StringComparison.Ordinal))
+                    saveSetting("monitor", migrated);
+            }
+        }
 
         private void RegisterAppBar(ABEdge edge, string selectedMonitor)
         {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 
 namespace AppAppBar3
@@ -12,12 +13,22 @@ namespace AppAppBar3
     {
         public class Monitor
         {
-           // public string FriendlyMonitorName;
-            //public SizeAndPosition SizeAndPosition;
+            // Friendly label shown in UI (e.g. "Display 1"). Also used as the stable
+            // identifier in settings.json — internal code matches on this string,
+            // so MonitorName must round-trip through SettingMethods unchanged.
             public string MonitorName;
             public double scale;
             public RECT WorkRect;
             public RECT MonitorRect;
+        }
+
+        // Win32 returns the device path (e.g. "\\.\DISPLAY1"). Format it as
+        // "Display N" for the UI; the digit suffix is stable across boots.
+        public static string FormatDisplayName(string szDevice)
+        {
+            if (string.IsNullOrEmpty(szDevice)) return szDevice;
+            var m = Regex.Match(szDevice, @"DISPLAY(\d+)", RegexOptions.IgnoreCase);
+            return m.Success ? "Display " + m.Groups[1].Value : szDevice;
         }
 
         public static List<Monitor> GetMonitorsInfo()
@@ -42,7 +53,7 @@ namespace AppAppBar3
 
                     monitors.Add(new Monitor
                     {
-                        MonitorName = mi.szDevice,
+                        MonitorName = FormatDisplayName(mi.szDevice),
                         scale = monitorScale,
                         WorkRect = mi.rcWork,
                         MonitorRect = mi.rcMonitor,
