@@ -66,6 +66,7 @@ namespace AppAppBar3
             saveSetting("autohide", false);
             saveSetting("theme", "Default");
             saveSetting("transparency", false);
+            saveSetting("tint_opacity", 40);
         }
 
         public static void saveSetting(string setting, object value)

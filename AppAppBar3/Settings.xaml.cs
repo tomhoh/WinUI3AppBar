@@ -70,6 +70,19 @@ namespace AppAppBar3
             cbThemeSettings.SelectionChanged += cbThemeSettings_SelectionChanged;
 
             transparencyCheckBox.IsChecked = (loadSettings("transparency") as bool?) ?? false;
+
+            // Tint slider: detach handler during the initial Value set so the
+            // ValueChanged path doesn't fire a redundant SaveAndApply on open.
+            tintOpacitySlider.ValueChanged -= tintOpacitySlider_ValueChanged;
+            tintOpacitySlider.Value = (loadSettings("tint_opacity") as int?) ?? 40;
+            tintOpacitySlider.IsEnabled = transparencyCheckBox.IsChecked == true;
+            tintOpacitySlider.ValueChanged += tintOpacitySlider_ValueChanged;
+        }
+
+        private void tintOpacitySlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            saveSetting("tint_opacity", (int)tintOpacitySlider.Value);
+            parentWindow.ApplyBackdropPreference();
         }
 
         private void cbThemeSettings_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -87,7 +100,9 @@ namespace AppAppBar3
 
         private void transparencyCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            saveSetting("transparency", transparencyCheckBox.IsChecked == true);
+            bool on = transparencyCheckBox.IsChecked == true;
+            saveSetting("transparency", on);
+            tintOpacitySlider.IsEnabled = on;
             parentWindow.ApplyBackdropPreference();
         }
 

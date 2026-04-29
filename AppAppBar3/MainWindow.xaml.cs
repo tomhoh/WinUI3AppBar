@@ -884,8 +884,17 @@ namespace AppAppBar3
 
             if (useBackdrop)
             {
-                if (this.SystemBackdrop == null)
-                    this.SystemBackdrop = new DesktopAcrylicBackdrop();
+                // Tint opacity is stored as 0-100; the controller wants 0.0-1.0.
+                int tintPercent = (loadSettings("tint_opacity") as int?) ?? 40;
+                float tint = Math.Clamp(tintPercent, 0, 100) / 100f;
+
+                // Always replace the backdrop when the slider moved so the new
+                // TintOpacity takes effect; the controller doesn't expose a way
+                // to update opacity after AddSystemBackdropTarget without a rebuild.
+                this.SystemBackdrop = new CustomAcrylicBackdrop
+                {
+                    TintOpacity = tint,
+                };
                 stPanel.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             }
             else
