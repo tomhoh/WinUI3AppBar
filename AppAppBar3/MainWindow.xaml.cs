@@ -866,7 +866,6 @@ namespace AppAppBar3
         // proportionally; larger bars grow them. Also updates VariableGrid and
         // stPanel orientation so children flow along the bar's long axis.
         private const int BaselineBarSize = 50;
-        private const double BaselineFontSize = 14;
         private const double BaselineIconSize = 32;
 
         private double CurrentScale
@@ -903,7 +902,9 @@ namespace AppAppBar3
                 VariableGrid.ItemHeight = barSize;
             }
 
-            webButton.FontSize = BaselineFontSize * scale;
+            // SymbolIcon size is driven by its own FontSize (it doesn't inherit
+            // from the parent ToggleButton). Default SymbolIcon FontSize is 20.
+            webIcon.FontSize = 20 * scale;
 
             // Shortcut buttons live as direct children of stPanel (not VariableGrid);
             // scale their Image content so the button auto-sizes to match.
