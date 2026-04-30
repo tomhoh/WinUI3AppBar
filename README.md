@@ -3,6 +3,7 @@ Implementation of a Desktop AppBar (taskbar) in WINUI 3. Similar to WPF and WinF
 Includes an example webview (webview2) window that is docked to the appbar when open.
 
 ![AppAppBar3 docked top with translucent acrylic background](docs/appbar.png)
+![AppAppBar3 with a different tint-opacity level](docs/appbar-2.png)
 
 ### Requirements
 - Visual Studio 2022 (17.8 or later)
