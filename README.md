@@ -2,7 +2,7 @@
 Implementation of a Desktop AppBar (taskbar) in WINUI 3. Similar to WPF and WinForms Appbars.  
 Includes an example webview (webview2) window that is docked to the appbar when open.
 
-![AppApbar3](https://github.com/user-attachments/assets/4b9c7b84-c161-4bde-a1c3-b916f0bee4cf)
+![AppAppBar3 docked top with translucent acrylic background](docs/appbar.png)
 
 ### Requirements
 - Visual Studio 2022 (17.8 or later)
@@ -36,6 +36,8 @@ For running the **unpackaged** builds (not MSIX) the target machine also needs t
 - Option to run at login (autostart).
 - Settings persisted to `%LOCALAPPDATA%\AppAppBar3\settings.json` so packaged and unpackaged builds share the same storage.
 - Builds in three flavors — MSIX package, unpackaged runtime-dependent `.exe`, and unpackaged fully self-contained `.exe` — all produced automatically by the GitHub Actions workflow in `.github/workflows/build.yml`.
+
+![Settings window showing Theme picker, Translucent background toggle, and Tint opacity slider](docs/settings.png)
 
 ## To do
 - Build into Library
