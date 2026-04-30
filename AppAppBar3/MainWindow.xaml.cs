@@ -884,16 +884,22 @@ namespace AppAppBar3
 
             if (useBackdrop)
             {
-                // Tint opacity is stored as 0-100; the controller wants 0.0-1.0.
-                int tintPercent = (loadSettings("tint_opacity") as int?) ?? 40;
-                float tint = Math.Clamp(tintPercent, 0, 100) / 100f;
+                // Slider value is stored 0-100. Drive BOTH TintOpacity and
+                // LuminosityOpacity from it so dragging produces a visible range:
+                // TintOpacity alone barely affects translucency — LuminosityOpacity
+                // controls the frosted-vs-clear-glass character and is what the
+                // user sees move when they drag the slider. At 0 the bar is
+                // near-fully see-through; at 100 it's heavily tinted/frosted.
+                int sliderPercent = (loadSettings("tint_opacity") as int?) ?? 40;
+                float opacity = Math.Clamp(sliderPercent, 0, 100) / 100f;
 
                 // Always replace the backdrop when the slider moved so the new
-                // TintOpacity takes effect; the controller doesn't expose a way
-                // to update opacity after AddSystemBackdropTarget without a rebuild.
+                // values take effect; DesktopAcrylicController snapshots the
+                // initial opacity values when AddSystemBackdropTarget runs.
                 this.SystemBackdrop = new CustomAcrylicBackdrop
                 {
-                    TintOpacity = tint,
+                    TintOpacity = opacity,
+                    LuminosityOpacity = opacity,
                 };
                 stPanel.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             }
