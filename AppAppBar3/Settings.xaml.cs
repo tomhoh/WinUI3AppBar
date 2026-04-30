@@ -61,16 +61,49 @@ namespace AppAppBar3
 
             // Populate theme picker after the constructor sets the saved selection,
             // so cbThemeSettings_SelectionChanged doesn't fire during initial load.
+            // Use strings rather than ElementTheme values: the WinRT projection wraps
+            // boxed enum values in IReference<T>, and ComboBox falls back to the
+            // wrapper's ToString() which shows "Windows.Foundation.IReference`1<...>".
             cbThemeSettings.SelectionChanged -= cbThemeSettings_SelectionChanged;
-            cbThemeSettings.ItemsSource = Enum.GetValues(typeof(ElementTheme));
-            cbThemeSettings.SelectedItem = ThemeHelper.LoadSavedTheme();
+            cbThemeSettings.ItemsSource = Enum.GetNames(typeof(ElementTheme));
+            cbThemeSettings.SelectedItem = ThemeHelper.LoadSavedTheme().ToString();
             cbThemeSettings.SelectionChanged += cbThemeSettings_SelectionChanged;
+
+            transparencyCheckBox.IsChecked = (loadSettings("transparency") as bool?) ?? false;
+
+            // Tint slider: detach handler during the initial Value set so the
+            // ValueChanged path doesn't fire a redundant SaveAndApply on open.
+            tintOpacitySlider.ValueChanged -= tintOpacitySlider_ValueChanged;
+            tintOpacitySlider.Value = (loadSettings("tint_opacity") as int?) ?? 40;
+            tintOpacitySlider.IsEnabled = transparencyCheckBox.IsChecked == true;
+            tintOpacitySlider.ValueChanged += tintOpacitySlider_ValueChanged;
+        }
+
+        private void tintOpacitySlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            saveSetting("tint_opacity", (int)tintOpacitySlider.Value);
+            parentWindow.ApplyBackdropPreference();
         }
 
         private void cbThemeSettings_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (cbThemeSettings.SelectedItem is ElementTheme t)
+            if (cbThemeSettings.SelectedItem is string s
+                && Enum.TryParse<ElementTheme>(s, out var t))
+            {
                 ThemeHelper.SaveAndApply(t);
+                // Backdrop preference depends on theme = Default; switching to
+                // Light / Dark must turn the backdrop off (and back on if user
+                // returns to Default with transparency enabled).
+                parentWindow.ApplyBackdropPreference();
+            }
+        }
+
+        private void transparencyCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            bool on = transparencyCheckBox.IsChecked == true;
+            saveSetting("transparency", on);
+            tintOpacitySlider.IsEnabled = on;
+            parentWindow.ApplyBackdropPreference();
         }
 
         private void autohideCheckBox_Click(object sender, RoutedEventArgs e)
@@ -78,10 +111,22 @@ namespace AppAppBar3
             saveSetting("autohide", autohideCheckBox.IsChecked == true);
             parentWindow.restartAppBar();
         }
+        // Light-dismiss: close on focus loss (click on the AppBar, another window,
+        // the desktop, or a context-menu flyout outside our window). The
+        // _hasBeenActivated guard avoids closing during the initial Activated →
+        // Deactivated → Activated race that can happen at window startup.
+        private bool _hasBeenActivated;
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
-            
-
+            if (args.WindowActivationState == WindowActivationState.Deactivated)
+            {
+                if (_hasBeenActivated)
+                    parentWindow.closeSettingsWindow();
+            }
+            else
+            {
+                _hasBeenActivated = true;
+            }
         }
        
 
@@ -182,13 +227,7 @@ namespace AppAppBar3
             saveSetting("edge", (int)cbEdgeSettings.SelectedItem);
         }
 
-        private void closeSettingsButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        {
-            parentWindow.closeSettingsWindow();
-            //this.Close();
-        }
 
-       
 
         private async void loadOnStartupCheckBox_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {

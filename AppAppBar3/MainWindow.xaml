@@ -9,7 +9,6 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    IsTitleBarVisible="False"
     IsShownInSwitchers="False"
     IsAlwaysOnTop="True"
     MinHeight="25"
@@ -18,41 +17,104 @@
 
 
     <StackPanel x:Name="stPanel" Background="{ThemeResource SystemChromeMediumLowColor}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Orientation="Horizontal" AllowDrop="True" DragOver="Grid_DragOver" DragLeave="DragLeave" Drop="Grid_Drop" CanDrag="True">
-        
+        <StackPanel.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="Dock Top" Click="DockTop_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="Up"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Dock Right" Click="DockRight_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="DockRight"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Dock Bottom" Click="DockBottom_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="DockBottom"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Dock Left" Click="DockLeft_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="DockLeft"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Identify Monitor" Click="DetectWindow_click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7F4;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Settings" Click="Settings_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="Setting"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Close AppBar" Click="CloseButton_Click">
+                    <MenuFlyoutItem.Icon>
+                        <SymbolIcon Symbol="Cancel"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </StackPanel.ContextFlyout>
+
             <VariableSizedWrapGrid Orientation="Horizontal"  x:Name="VariableGrid" AllowDrop="False" DragOver="Grid_DragOver" Drop="Grid_Drop" CanDrag="True" MaximumRowsOrColumns="120" ItemHeight="50" ItemWidth="100" HorizontalAlignment="Left" HorizontalChildrenAlignment="Left" >
 
-            <ToggleButton  x:Name="webButton" Content="Web" Click="openWebWindow" Width="{Binding ItemWidth, ElementName=VariableGrid}">
+            <ToggleButton x:Name="webButton" Click="openWebWindow"
+                          Background="Transparent" BorderBrush="Transparent"
+                          Padding="0"
+                          Margin="2"
+                          CornerRadius="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center"
+                          UseSystemFocusVisuals="False">
+                <!--
+                    Suppress every visual-state brush ToggleButton picks up from
+                    the theme (PointerOver / Pressed / Checked / their Disabled
+                    variants). Without these overrides setting Background and
+                    BorderBrush on the button itself only covers the default state,
+                    so a hover outline is still visible.
+                -->
+                <ToggleButton.Resources>
+                    <!-- Default / disabled stay transparent so the icon reads
+                         flat on the AppBar surface. -->
+                    <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundDisabled" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedDisabled" Color="Transparent"/>
 
-                </ToggleButton>
+                    <!-- Hover / pressed / checked use the system's "Subtle Fill"
+                         brushes — same translucent tint Windows 11 taskbar
+                         icons use. Theme-aware (light vs dark). -->
+                    <StaticResource x:Key="ToggleButtonBackgroundPointerOver"
+                                    ResourceKey="SubtleFillColorSecondaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundPressed"
+                                    ResourceKey="SubtleFillColorTertiaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundChecked"
+                                    ResourceKey="SubtleFillColorSecondaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver"
+                                    ResourceKey="SubtleFillColorSecondaryBrush"/>
+                    <StaticResource x:Key="ToggleButtonBackgroundCheckedPressed"
+                                    ResourceKey="SubtleFillColorTertiaryBrush"/>
+
+                    <!-- Borders always transparent — taskbar icons don't draw
+                         an outline in any state. -->
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushDisabled" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedDisabled" Color="Transparent"/>
+                </ToggleButton.Resources>
+                <FontIcon x:Name="webIcon" Glyph="&#xE774;"/>
+            </ToggleButton>
 
 
-            <ComboBox x:Name="edgeMonitor"  Margin="5,9,5,0"  SelectedItem="{Binding Edge, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"  SelectionChanged="edgeComboBox_SelectionChanged"  PlaceholderText="Top" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" >
-                    
-                </ComboBox>
-            <ComboBox x:Name="cbMonitor"  Margin="0,9,5,0" ItemsSource="{Binding ListOfMonitors, Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="DisplayComboBox_SelectionChanged"  PlaceholderText="Pick Screen" Width="{Binding ItemWidth, ElementName=layoutFlexGrid}" MinWidth="200">
-
-               </ComboBox>
-                <Button Content="Close" Margin="0,0,0,0" Click="CloseButton_Click" Width="{Binding ItemWidth, ElementName=VariableGrid}"/>
-            <CommandBar HorizontalAlignment="Right" x:Name="theCommandBar" MinWidth="{Binding ItemWidth, ElementName=VariableGrid}">
-                <AppBarButton Icon="Clear" Click="CloseButton_Click" Label="Close"/>
-                <AppBarButton Icon="DockRight" Label="Right"/>
-                <AppBarButton Icon="DockBottom" Label="Bottom"/>
-                <AppBarButton Icon="DockLeft" Label="Left"/>
-                <AppBarButton  Label="Identify Monitor" Click="DetectWindow_click">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE7F4;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-
-                <AppBarButton Icon="Setting" Label="Settings" Click="Settings_Click"/>
-
-            </CommandBar>
         </VariableSizedWrapGrid>
             
         </StackPanel>
-        
-
-
-
-
 </winex:WindowEx>

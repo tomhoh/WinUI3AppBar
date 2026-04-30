@@ -60,11 +60,13 @@ namespace AppAppBar3
         public static void setDefaultValues()
         {
             saveSetting("bar_size", 50);
-            saveSetting("monitor", @"\\.\DISPLAY1");
+            saveSetting("monitor", "Display 1");
             saveSetting("LoadOnStartup", true);
             saveSetting("edge", 1);
             saveSetting("autohide", false);
             saveSetting("theme", "Default");
+            saveSetting("transparency", false);
+            saveSetting("tint_opacity", 40);
         }
 
         public static void saveSetting(string setting, object value)

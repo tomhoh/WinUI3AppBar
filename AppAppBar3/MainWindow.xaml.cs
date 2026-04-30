@@ -130,12 +130,9 @@ namespace AppAppBar3
             this.AppWindow.IsShownInSwitchers = false;
             monitorInfo = GetMonitorsInfo();
             MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
-            cbMonitor.DataContext = this;
-            edgeMonitor.DataContext = this;
             monitor = new WindowMessageMonitor(this);
             monitor.WindowMessageReceived += OnWindowMessageReceived;
             taskbarCreatedMsg = RegisterWindowMessage("TaskbarCreated");
-            edgeMonitor.ItemsSource = Enum.GetValues(typeof(ABEdge));
         }
        
 
@@ -151,8 +148,6 @@ namespace AppAppBar3
         private void OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
         {
 
-            cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
-            edgeMonitor.SelectionChanged -= edgeComboBox_SelectionChanged;
             // selectedItemsText = @"\\.\DISPLAY1";
 
             if (appWindow == null)
@@ -165,8 +160,8 @@ namespace AppAppBar3
                 {
                     SettingMethods.setDefaultValues();
                 }
-                edgeMonitor.SelectedItem = (ABEdge)loadSettings("edge");
-                cbMonitor.SelectedItem = (string)loadSettings("monitor");
+                MigrateLegacyMonitorSetting();
+                Edge = (ABEdge)loadSettings("edge");
                
                 
                 Debug.WriteLine("Window activated edge from settings " + (ABEdge)loadSettings("edge"));
@@ -198,16 +193,28 @@ namespace AppAppBar3
                     }
 
                 }
-                edgeMonitor.SelectionChanged += edgeComboBox_SelectionChanged;
-                cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
                 loadShortCuts();
-
-                
+                RescaleControls();
+                ApplyBackdropPreference();
             }
 
         }
 
        
+
+        // settings.json from older builds stored the Win32 device path
+        // ("\\.\DISPLAY1"). Convert to the new "Display N" form once so the
+        // saved monitor matches a MonitorList entry.
+        private static void MigrateLegacyMonitorSetting()
+        {
+            if (loadSettings("monitor") is string saved
+                && saved.StartsWith(@"\\.\", StringComparison.Ordinal))
+            {
+                var migrated = MonitorHelper.FormatDisplayName(saved);
+                if (!string.Equals(migrated, saved, StringComparison.Ordinal))
+                    saveSetting("monitor", migrated);
+            }
+        }
 
         private void RegisterAppBar(ABEdge edge, string selectedMonitor)
         {
@@ -295,9 +302,7 @@ namespace AppAppBar3
             SHAppBarMessage((int)AppBarMessages.ABM_SETPOS, ref abd);
             ApplyThickness(ref abd.rc, edge, barSizeScaled);
 
-            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
-            SetWindowLong(hWnd, GWL_STYLE, style);
+            StripFrameStyles(hWnd);
             // SWP_FRAMECHANGED commits the style change and forces WM_NCCALCSIZE before
             // the move so the window doesn't retain non-client metrics from the old frame.
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
@@ -313,6 +318,15 @@ namespace AppAppBar3
             }
 
             SHAppBarMessage((int)AppBarMessages.ABM_WINDOWPOSCHANGED, ref abd);
+        }
+
+        // Strips WS_CAPTION (covers WS_BORDER|WS_DLGFRAME) and WS_THICKFRAME so the
+        // docked AppBar has no caption, no sizing frame, and no system-painted edge.
+        private static void StripFrameStyles(IntPtr hWnd)
+        {
+            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
+            SetWindowLong(hWnd, GWL_STYLE, style);
         }
 
         private static void ApplyThickness(ref RECT rc, ABEdge edge, int thickness)
@@ -398,9 +412,7 @@ namespace AppAppBar3
                 case ABEdge.Bottom: triggerRect.top    = mon.bottom - triggerPx; break;
             }
 
-            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-            style = (IntPtr)(style.ToInt64() & ~(WS_CAPTION | WS_THICKFRAME));
-            SetWindowLong(hWnd, GWL_STYLE, style);
+            StripFrameStyles(hWnd);
             SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0,
                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -576,7 +588,7 @@ namespace AppAppBar3
                 switch (e.Message.WParam)
                 {
                     case (int)ABNotify.ABN_POSCHANGED:
-                        relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
+                        relocateWindowLocation(Edge);
                         break;
 
                     case (int)ABNotify.ABN_FULLSCREENAPP:
@@ -624,13 +636,9 @@ namespace AppAppBar3
                     break;
 
                 case WM_DISPLAYCHANGE:
-                    var selectedMon = cbMonitor.SelectedItem as string;
-                    cbMonitor.SelectionChanged -= DisplayComboBox_SelectionChanged;
                     MonitorList = new ObservableCollection<Monitor>(GetMonitorsInfo());
-                    cbMonitor.SelectedItem = selectedMon;
-                    cbMonitor.SelectionChanged += DisplayComboBox_SelectionChanged;
                     // Rebuild our registration on the current edge/monitor (may have been disconnected).
-                    if (fBarRegistered) relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
+                    if (fBarRegistered) relocateWindowLocation(Edge);
                     break;
             }
         }
@@ -758,17 +766,28 @@ namespace AppAppBar3
                 };
                 bi.SetSource(iconThumbnail);
 
+                double iconSize = CurrentIconSize;
+                int barSize = (loadSettings("bar_size") as int?) ?? BaselineBarSize;
                 Image ButtonImageEL = new Image()
                 {
                     Source = bi,
-                    Height = 32,
-                    Width = 32,
+                    Height = iconSize,
+                    Width = iconSize,
                  };
 
+                // Constrain to a square the size of the bar so the button can't
+                // overflow the bar's narrow axis (vertical dock) — the theme's
+                // default Button Padding adds ~22 px horizontally and would
+                // otherwise clip the icon when the bar is docked Left or Right.
                 Button testIButton = new Button()
                 {
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderBrush = new SolidColorBrush(Colors.Transparent),
+                    Padding = new Thickness(0),
+                    Width = barSize,
+                    Height = barSize,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
                     Content = ButtonImageEL,
                     Tag = aPath,
                  };
@@ -850,8 +869,104 @@ namespace AppAppBar3
         public void restartAppBar()
         {
             ABSetPos((ABEdge)SettingMethods.loadSettings("edge"), (string)SettingMethods.loadSettings("monitor"));
-            //ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
+            RescaleControls();
+            ApplyBackdropPreference();
+        }
 
+        // Translucent ("taskbar-like") AppBar background. Only takes effect when
+        // the user is following the Windows theme — explicit Light/Dark uses the
+        // existing solid chrome fill so the user's color choice isn't tinted.
+        public void ApplyBackdropPreference()
+        {
+            bool wantTransparent = (loadSettings("transparency") as bool?) ?? false;
+            bool themeIsDefault = ThemeHelper.LoadSavedTheme() == ElementTheme.Default;
+            bool useBackdrop = wantTransparent && themeIsDefault;
+
+            if (useBackdrop)
+            {
+                // Slider value is stored 0-100. Drive BOTH TintOpacity and
+                // LuminosityOpacity from it so dragging produces a visible range:
+                // TintOpacity alone barely affects translucency — LuminosityOpacity
+                // controls the frosted-vs-clear-glass character and is what the
+                // user sees move when they drag the slider. At 0 the bar is
+                // near-fully see-through; at 100 it's heavily tinted/frosted.
+                int sliderPercent = (loadSettings("tint_opacity") as int?) ?? 40;
+                float opacity = Math.Clamp(sliderPercent, 0, 100) / 100f;
+
+                // Always replace the backdrop when the slider moved so the new
+                // values take effect; DesktopAcrylicController snapshots the
+                // initial opacity values when AddSystemBackdropTarget runs.
+                this.SystemBackdrop = new CustomAcrylicBackdrop
+                {
+                    TintOpacity = opacity,
+                    LuminosityOpacity = opacity,
+                };
+                stPanel.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            }
+            else
+            {
+                this.SystemBackdrop = null;
+                // Restore the chrome fill. Walk stPanel-local resources first, then
+                // fall back to the app-level dictionary; either returns the active
+                // theme's value at this moment.
+                if (!stPanel.Resources.TryGetValue("SystemChromeMediumLowColor", out var res))
+                    Application.Current.Resources.TryGetValue("SystemChromeMediumLowColor", out res);
+                if (res is Windows.UI.Color color)
+                    stPanel.Background = new SolidColorBrush(color);
+            }
+        }
+
+        // Visual scaling baseline matches bar_size = 50: at scale 1.0 controls
+        // keep their original sizes. Smaller bars shrink controls/text/icons
+        // proportionally; larger bars grow them. Also updates VariableGrid and
+        // stPanel orientation so children flow along the bar's long axis.
+        private const int BaselineBarSize = 50;
+        private const double BaselineIconSize = 32;
+
+        private double CurrentScale
+        {
+            get
+            {
+                int barSize = (loadSettings("bar_size") as int?) ?? BaselineBarSize;
+                return (double)barSize / BaselineBarSize;
+            }
+        }
+
+        private double CurrentIconSize => BaselineIconSize * CurrentScale;
+
+        private void RescaleControls()
+        {
+            int barSize = (loadSettings("bar_size") as int?) ?? BaselineBarSize;
+            double scale = (double)barSize / BaselineBarSize;
+            bool horizontal = Edge == ABEdge.Top || Edge == ABEdge.Bottom;
+
+            stPanel.Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical;
+
+            // Square cells in both orientations so the Web icon button wraps
+            // just the icon rather than spreading across a wider rectangle.
+            VariableGrid.Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical;
+            VariableGrid.ItemWidth  = barSize;
+            VariableGrid.ItemHeight = barSize;
+
+            // FontIcon size is driven by its own FontSize property (SymbolIcon
+            // doesn't expose one). Default FontIcon FontSize is 20.
+            webIcon.FontSize = 20 * scale;
+
+            // Shortcut buttons live as direct children of stPanel (not VariableGrid).
+            // Pin them to barSize x barSize with zero padding so they fit the bar's
+            // narrow axis in either orientation, then scale the inner Image to match.
+            double iconSize = CurrentIconSize;
+            foreach (var child in stPanel.Children)
+            {
+                if (child is Button btn && btn.Content is Image img)
+                {
+                    btn.Width   = barSize;
+                    btn.Height  = barSize;
+                    btn.Padding = new Thickness(0);
+                    img.Width   = iconSize;
+                    img.Height  = iconSize;
+                }
+            }
         }
         Settings settingsWindow;
 
@@ -909,43 +1024,28 @@ namespace AppAppBar3
                           }
         }
 
-        private void DisplayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-            selectedItemsText = (cbMonitor.SelectedItem as String);
-        }
+        // Dock-menu handlers — persist the new edge, update the bound Edge
+        // property, and reposition the AppBar.
+        private void DockTop_Click(object sender, RoutedEventArgs e)    => SetEdge(ABEdge.Top);
+        private void DockRight_Click(object sender, RoutedEventArgs e)  => SetEdge(ABEdge.Right);
+        private void DockBottom_Click(object sender, RoutedEventArgs e) => SetEdge(ABEdge.Bottom);
+        private void DockLeft_Click(object sender, RoutedEventArgs e)   => SetEdge(ABEdge.Left);
 
+        private void SetEdge(ABEdge edge)
+        {
+            saveSetting("edge", (int)edge);
+            Edge = edge;
+            relocateWindowLocation(edge);
+        }
 
         private void relocateWindowLocation(ABEdge theSelectedEdge)
         {
-            Debug.WriteLine("This is the edge var "+Edge);
-            
-           
-              ABSetPos(theSelectedEdge, cbMonitor.SelectedItem as string);
-            if (Edge == ABEdge.Top || Edge == ABEdge.Bottom)
-            {
-                Debug.WriteLine("Edge Selection " + Edge);
-
-                stPanel.Orientation = Orientation.Horizontal;
-            }
-            else
-            {
-                stPanel.Orientation = Orientation.Vertical;
-            }
-
-           
+            ABSetPos(theSelectedEdge, loadSettings("monitor") as string);
+            RescaleControls();
             if (webWindow != null)
             {
                 DockToAppBar(webWindow);
             }
-        }
-        private void edgeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-           Edge = ((ABEdge)edgeMonitor.SelectedItem);
-            Debug.WriteLine("This is the selecteditem edge "+Edge);
-            relocateWindowLocation((ABEdge)edgeMonitor.SelectedItem);
-            Debug.WriteLine("Edge Selection Changed********** "+ Edge);
-           
         }
         WebWindow webWindow;
         private void openWebWindow(object sender, RoutedEventArgs e)
@@ -972,9 +1072,14 @@ namespace AppAppBar3
             var wappWindow = webW.GetAppWindow();
             bool isSettings = wappWindow.Title == "Settings";
 
+            // Re-query monitor info every time. The constructor-time monitorInfo was
+            // captured before our AppBar registered, so its WorkRect doesn't subtract
+            // our reservation — using it here would overlap WebWindow with the AppBar.
+            var fresh = GetMonitorsInfo();
             Monitor mon = null;
-            foreach (var m in monitorInfo)
-                if (m.MonitorName == cbMonitor.SelectedItem as string) { mon = m; break; }
+            var savedMonitor = loadSettings("monitor") as string;
+            foreach (var m in fresh)
+                if (m.MonitorName == savedMonitor) { mon = m; break; }
             if (mon == null) return;
 
             int x, y, w, h;

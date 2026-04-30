@@ -3,6 +3,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Windows.UI.ViewManagement;
 
 namespace AppAppBar3
 {
@@ -20,6 +21,8 @@ namespace AppAppBar3
 
         private static readonly List<Window> _windows = new();
         private static bool _systemEventsHooked;
+        // Held in a static so the GC doesn't collect the UISettings instance and drop our event subscription.
+        private static UISettings _uiSettings;
 
         public static ElementTheme LoadSavedTheme()
         {
@@ -54,8 +57,14 @@ namespace AppAppBar3
 
             if (window?.Content is FrameworkElement fe)
             {
-                // Setting to the resolved Light/Dark (rather than Default) ensures the
-                // ThemeResource brushes flip immediately on a system theme change.
+                // Toggle through Default before setting the resolved theme. WinUI 3
+                // desktop doesn't always re-evaluate ThemeResource bindings on a
+                // top-level window's content when RequestedTheme is set to a value
+                // equal to the implicit one — the AppBar window in particular (which
+                // has had WS_CAPTION/WS_THICKFRAME stripped and SWP_FRAMECHANGED
+                // applied) gets stuck at the original theme until app restart.
+                if (fe.RequestedTheme != ElementTheme.Default)
+                    fe.RequestedTheme = ElementTheme.Default;
                 fe.RequestedTheme = resolved;
             }
 
@@ -101,16 +110,42 @@ namespace AppAppBar3
         {
             if (_systemEventsHooked) return;
             _systemEventsHooked = true;
+
+            // UISettings.ColorValuesChanged is the WinRT-native theme/accent flip event
+            // and fires reliably in WinUI 3 desktop where SystemEvents.UserPreferenceChanged
+            // sometimes did not (especially while the AppBar's frame was stripped).
+            try
+            {
+                _uiSettings = new UISettings();
+                _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("UISettings hook failed, falling back to SystemEvents: " + ex.Message);
+            }
+
+            // Belt-and-suspenders: SystemEvents covers cases where UISettings doesn't fire
+            // (e.g. the high-contrast toggle that doesn't change AppsUseLightTheme).
             SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
+        }
+
+        private static void OnColorValuesChanged(UISettings sender, object args)
+        {
+            ReapplyToFollowers();
         }
 
         private static void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
         {
             if (e.Category != UserPreferenceCategory.General) return;
+            ReapplyToFollowers();
+        }
+
+        private static void ReapplyToFollowers()
+        {
             // Only react when the user is following Windows; explicit Light/Dark wins.
             if (LoadSavedTheme() != ElementTheme.Default) return;
 
-            // Fires on a non-UI thread — marshal each apply to its window's dispatcher.
+            // Both events fire on non-UI threads — marshal each apply to its window's dispatcher.
             foreach (var w in _windows.ToArray())
             {
                 var dq = w.DispatcherQueue;
