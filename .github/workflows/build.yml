@@ -10,13 +10,18 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      id-token: write   # required for OIDC federation to Azure
+      contents: read
     env:
       Configuration: Release
       Platform: x64
       Solution: AppAppBar3/AppAppBar3.csproj
-      # Publisher must match the one in Package.appxmanifest exactly for MSIX signing.
-      CertSubject: CN=tomho
-      PfxPassword: appbar-ci
+      # Azure Trusted Signing — non-secret identifiers. Tenant/client IDs are
+      # in repo secrets so they aren't tied to the workflow file.
+      TS_Endpoint: https://wus.codesigning.azure.net/
+      TS_AccountName: tomhoh
+      TS_CertProfile: TMHApplications
 
     steps:
       - name: Checkout
@@ -30,29 +35,18 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Generate self-signed code-signing cert
-        id: cert
-        shell: pwsh
-        run: |
-          $cert = New-SelfSignedCertificate `
-            -Type CodeSigningCert `
-            -Subject "$env:CertSubject" `
-            -KeyUsage DigitalSignature `
-            -CertStoreLocation "Cert:\CurrentUser\My" `
-            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
-          $pwd = ConvertTo-SecureString -String "$env:PfxPassword" -Force -AsPlainText
-          $pfxPath = "$env:GITHUB_WORKSPACE\AppAppBar3\ci-cert.pfx"
-          $cerPath = "$env:GITHUB_WORKSPACE\AppAppBar3\ci-cert.cer"
-          Export-PfxCertificate  -Cert $cert -FilePath $pfxPath -Password $pwd | Out-Null
-          Export-Certificate     -Cert $cert -FilePath $cerPath                 | Out-Null
-          "thumbprint=$($cert.Thumbprint)"       | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "pfx=AppAppBar3\ci-cert.pfx"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "cer=$cerPath"                         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      - name: Azure login (OIDC for Trusted Signing)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
 
       # -----------------------------------------------------------------------
-      # Option A — MSIX package (signed with the CI-generated self-signed cert).
-      # MSIX subscribers must import ci-cert.cer into "Trusted People" on their
-      # machine before installing the .msix, since the cert isn't a public CA.
+      # Option A — MSIX package, built unsigned. The Sign step below uses Azure
+      # Trusted Signing, so end users can double-click to install without first
+      # importing a cert into "Trusted People" — the cert chain is rooted in
+      # the publicly-trusted Microsoft Identity Verification Root.
       # -----------------------------------------------------------------------
       - name: Build MSIX (Option A)
         id: msix
@@ -63,15 +57,28 @@ jobs:
             /restore `
             /p:Configuration=$env:Configuration `
             /p:Platform=$env:Platform `
-            /p:AppxPackageSigningEnabled=true `
-            /p:PackageCertificateKeyFile="${{ steps.cert.outputs.pfx }}" `
-            /p:PackageCertificateThumbprint="${{ steps.cert.outputs.thumbprint }}" `
-            /p:PackageCertificatePassword="$env:PfxPassword" `
+            /p:AppxPackageSigningEnabled=false `
             /p:GenerateAppxPackageOnBuild=true `
             /p:GenerateAppInstallerFile=false `
             /p:AppxBundle=Never `
             /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxPackageDir="$env:GITHUB_WORKSPACE\publish\msix\\"
+
+      - name: Sign MSIX with Azure Trusted Signing
+        id: sign-msix
+        if: steps.msix.outcome == 'success'
+        continue-on-error: true
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: ${{ env.TS_Endpoint }}
+          trusted-signing-account-name: ${{ env.TS_AccountName }}
+          certificate-profile-name: ${{ env.TS_CertProfile }}
+          files-folder: ${{ github.workspace }}\publish\msix
+          files-folder-filter: msix
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
 
       # -----------------------------------------------------------------------
       # Option B — Unpackaged, runtime-dependent. Target machine needs the
@@ -107,6 +114,19 @@ jobs:
           if (-not (Test-Path $src)) { throw "App PRI not found at $src" }
           Copy-Item -Path $src -Destination $dest -Force
           Write-Host "Staged $src -> $dest"
+
+      - name: Sign Option B binaries with Azure Trusted Signing
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: ${{ env.TS_Endpoint }}
+          trusted-signing-account-name: ${{ env.TS_AccountName }}
+          certificate-profile-name: ${{ env.TS_CertProfile }}
+          files: |
+            ${{ github.workspace }}\publish\unpackaged-runtime-dep\AppAppBar3.exe
+            ${{ github.workspace }}\publish\unpackaged-runtime-dep\AppAppBar3.dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
 
       # -----------------------------------------------------------------------
       # Option C — Unpackaged, fully self-contained. ~100 MB, portable.
@@ -171,6 +191,19 @@ jobs:
           Get-ChildItem -Path $dest -Filter "*.dll" |
             Where-Object { $_.Name -match '^(msvcp|vcruntime)' } |
             Format-Table Name, Length
+
+      - name: Sign Option C binaries with Azure Trusted Signing
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: ${{ env.TS_Endpoint }}
+          trusted-signing-account-name: ${{ env.TS_AccountName }}
+          certificate-profile-name: ${{ env.TS_CertProfile }}
+          files: |
+            ${{ github.workspace }}\publish\unpackaged-self-contained\AppAppBar3.exe
+            ${{ github.workspace }}\publish\unpackaged-self-contained\AppAppBar3.dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
 
       # -----------------------------------------------------------------------
       # Diagnostic: dump key info about the self-contained publish folder so we
@@ -250,20 +283,14 @@ jobs:
           Write-Host $report
 
       - name: Upload MSIX artifact
-        if: steps.msix.outcome == 'success'
+        if: steps.msix.outcome == 'success' && steps.sign-msix.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: AppAppBar3-MSIX-x64
-          # Sideload-ready contents only — excludes .appinstaller (invalid auto-update
-          # manifest from the stale AppInstallerUri in the csproj), .appxsym (debug
-          # symbols), and the raw .cer from the MSIX build (we use our own ci-cert).
-          path: |
-            publish/msix/*_Test/**/*.msix
-            publish/msix/*_Test/*.cer
-            publish/msix/*_Test/Install.ps1
-            publish/msix/*_Test/Add-AppDevPackage.ps1
-            publish/msix/*_Test/Add-AppDevPackage.resources/en-US/**
-            AppAppBar3/ci-cert.cer
+          # Just the signed .msix — the cert chain is publicly trusted via
+          # Microsoft's Identity Verification Root, so the install scripts and
+          # sideload .cer that the old self-signed flow shipped aren't needed.
+          path: publish/msix/*_Test/**/*.msix
           if-no-files-found: warn
 
       - name: Upload unpackaged runtime-dependent artifact
@@ -284,11 +311,12 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $msixState = "${{ steps.msix.outcome }}"
+          $msixBuild = "${{ steps.msix.outcome }}"
+          $msixSign  = "${{ steps.sign-msix.outcome }}"
           Add-Content $env:GITHUB_STEP_SUMMARY "## Build artifacts`n"
-          Add-Content $env:GITHUB_STEP_SUMMARY "| Variant | Status |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "|---|---|"
-          Add-Content $env:GITHUB_STEP_SUMMARY "| A — MSIX (signed, sideload) | $msixState |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "| B — Unpackaged, runtime-dep | success |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "| C — Unpackaged, self-contained | success |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "`nMSIX install: import **ci-cert.cer** into *Local Machine > Trusted People* first, then double-click the .msix."
+          Add-Content $env:GITHUB_STEP_SUMMARY "| Variant | Build | Sign |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "|---|---|---|"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| A — MSIX | $msixBuild | $msixSign |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| B — Unpackaged, runtime-dep | success | success |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| C — Unpackaged, self-contained | success | success |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "`nAll artifacts signed via Azure Trusted Signing (cert profile **${{ env.TS_CertProfile }}**, account **${{ env.TS_AccountName }}**). MSIX installs by double-click — no cert import required."
