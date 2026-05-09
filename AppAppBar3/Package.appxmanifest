@@ -10,14 +10,14 @@
 
   <Identity
     Name="2a8aaef2-040b-4397-88b2-eedcf8549829"
-    Publisher="CN=Thomas Hohensee, O=Thomas Hohensee, STREET=17003 Painted Sunset Crt, L=College Station, S=Texas, C=US, PostalCode=77845"
+    Publisher="CN=tomho"
     Version="1.0.7.0" />
 
   <mp:PhoneIdentity PhoneProductId="2a8aaef2-040b-4397-88b2-eedcf8549829" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>AppAppBar3</DisplayName>
-    <PublisherDisplayName>Thomas Hohensee</PublisherDisplayName>
+    <PublisherDisplayName>tomho</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
