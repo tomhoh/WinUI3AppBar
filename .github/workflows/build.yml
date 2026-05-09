@@ -139,6 +139,83 @@ jobs:
             Where-Object { $_.Name -match '^(msvcp|vcruntime)' } |
             Format-Table Name, Length
 
+      # -----------------------------------------------------------------------
+      # Diagnostic: dump key info about the self-contained publish folder so we
+      # can debug 0xc000027b-style native init crashes without needing access
+      # to a Windows box. Writes a human-readable report to the step summary
+      # AND drops _diagnostic.txt inside the artifact for later inspection.
+      # -----------------------------------------------------------------------
+      - name: Diagnose self-contained artifact
+        shell: pwsh
+        run: |
+          $dir  = "$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained"
+          $diag = "$dir\_diagnostic.txt"
+          $lines = New-Object System.Collections.Generic.List[string]
+
+          $lines.Add("=== Self-contained publish folder file count ===")
+          $all = Get-ChildItem -Path $dir -Recurse -File
+          $lines.Add("Total files: $($all.Count)")
+          $lines.Add("")
+
+          $lines.Add("=== Top-level files (sorted) ===")
+          Get-ChildItem -Path $dir -File | Sort-Object Name |
+            ForEach-Object { $lines.Add(("{0,-60} {1,12}" -f $_.Name, $_.Length)) }
+          $lines.Add("")
+
+          $lines.Add("=== .manifest files (reg-free WinRT activation) ===")
+          $manifests = Get-ChildItem -Path $dir -File -Filter *.manifest
+          if ($manifests) {
+            $manifests | ForEach-Object { $lines.Add(("{0,-60} {1,12}" -f $_.Name, $_.Length)) }
+          } else {
+            $lines.Add("NONE FOUND — this is almost certainly the cause of 0xc000027b")
+          }
+          $lines.Add("")
+
+          $lines.Add("=== resources.pri (XamlControlsResources / MRT) ===")
+          if (Test-Path "$dir\resources.pri") {
+            $lines.Add("Found: $((Get-Item "$dir\resources.pri").Length) bytes")
+          } else {
+            $lines.Add("MISSING — XamlControlsResources merge in App.xaml will fail")
+          }
+          $lines.Add("")
+
+          $lines.Add("=== Embedded manifest in AppAppBar3.exe ===")
+          $exe = "$dir\AppAppBar3.exe"
+          if (Test-Path $exe) {
+            $bytes = [IO.File]::ReadAllBytes($exe)
+            $text  = [Text.Encoding]::ASCII.GetString($bytes)
+            $hasMuxApp = $text -match 'activatableClass\s+name="Microsoft\.UI\.Xaml\.Application"'
+            $hasAppId  = $text -match '<assemblyIdentity[^>]+name="AppAppBar3'
+            $hasDpi    = $text -match 'PerMonitorV2'
+            $lines.Add("activatableClass Microsoft.UI.Xaml.Application : $hasMuxApp")
+            $lines.Add("assemblyIdentity name=`"AppAppBar3...`"            : $hasAppId")
+            $lines.Add("PerMonitorV2 dpi awareness                       : $hasDpi")
+          } else {
+            $lines.Add("AppAppBar3.exe not found — publish step itself failed")
+          }
+          $lines.Add("")
+
+          $lines.Add("=== Key WinAppSDK / WinUI DLLs present ===")
+          $expected = @(
+            "Microsoft.ui.xaml.dll",
+            "Microsoft.UI.Xaml.Controls.dll",
+            "Microsoft.WindowsAppRuntime.dll",
+            "Microsoft.WindowsAppRuntime.Bootstrap.dll",
+            "Microsoft.WindowsAppRuntime.Insights.Resource.dll",
+            "Microsoft.Internal.FrameworkUdk.dll",
+            "WebView2Loader.dll",
+            "mrm.dll"
+          )
+          foreach ($name in $expected) {
+            $present = Test-Path "$dir\$name"
+            $lines.Add(("{0,-50} {1}" -f $name, $(if ($present) { "OK" } else { "MISSING" })))
+          }
+
+          $report = $lines -join "`n"
+          $report | Out-File -FilePath $diag -Encoding utf8
+          $report | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          Write-Host $report
+
       - name: Upload MSIX artifact
         if: steps.msix.outcome == 'success'
         uses: actions/upload-artifact@v4
