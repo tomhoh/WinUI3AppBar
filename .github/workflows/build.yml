@@ -78,6 +78,7 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+          trace: true
 
       # -----------------------------------------------------------------------
       # Option B — Unpackaged, runtime-dependent. Target machine needs the
