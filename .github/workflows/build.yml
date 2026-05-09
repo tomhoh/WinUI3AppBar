@@ -67,7 +67,6 @@ jobs:
       - name: Sign MSIX with Azure Trusted Signing
         id: sign-msix
         if: steps.msix.outcome == 'success'
-        continue-on-error: true
         uses: azure/trusted-signing-action@v0
         with:
           endpoint: ${{ env.TS_Endpoint }}
