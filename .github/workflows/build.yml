@@ -115,19 +115,6 @@ jobs:
           Copy-Item -Path $src -Destination $dest -Force
           Write-Host "Staged $src -> $dest"
 
-      - name: Sign Option B binaries with Azure Trusted Signing
-        uses: azure/trusted-signing-action@v0
-        with:
-          endpoint: ${{ env.TS_Endpoint }}
-          trusted-signing-account-name: ${{ env.TS_AccountName }}
-          certificate-profile-name: ${{ env.TS_CertProfile }}
-          files: |
-            ${{ github.workspace }}\publish\unpackaged-runtime-dep\AppAppBar3.exe
-            ${{ github.workspace }}\publish\unpackaged-runtime-dep\AppAppBar3.dll
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-
       # -----------------------------------------------------------------------
       # Option C — Unpackaged, fully self-contained. ~100 MB, portable.
       # The follow-up "Bundle VC++ runtime" step copies vcruntime/msvcp DLLs in
@@ -191,19 +178,6 @@ jobs:
           Get-ChildItem -Path $dest -Filter "*.dll" |
             Where-Object { $_.Name -match '^(msvcp|vcruntime)' } |
             Format-Table Name, Length
-
-      - name: Sign Option C binaries with Azure Trusted Signing
-        uses: azure/trusted-signing-action@v0
-        with:
-          endpoint: ${{ env.TS_Endpoint }}
-          trusted-signing-account-name: ${{ env.TS_AccountName }}
-          certificate-profile-name: ${{ env.TS_CertProfile }}
-          files: |
-            ${{ github.workspace }}\publish\unpackaged-self-contained\AppAppBar3.exe
-            ${{ github.workspace }}\publish\unpackaged-self-contained\AppAppBar3.dll
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
 
       # -----------------------------------------------------------------------
       # Diagnostic: dump key info about the self-contained publish folder so we
@@ -317,6 +291,6 @@ jobs:
           Add-Content $env:GITHUB_STEP_SUMMARY "| Variant | Build | Sign |"
           Add-Content $env:GITHUB_STEP_SUMMARY "|---|---|---|"
           Add-Content $env:GITHUB_STEP_SUMMARY "| A — MSIX | $msixBuild | $msixSign |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "| B — Unpackaged, runtime-dep | success | success |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "| C — Unpackaged, self-contained | success | success |"
-          Add-Content $env:GITHUB_STEP_SUMMARY "`nAll artifacts signed via Azure Trusted Signing (cert profile **${{ env.TS_CertProfile }}**, account **${{ env.TS_AccountName }}**). MSIX installs by double-click — no cert import required."
+          Add-Content $env:GITHUB_STEP_SUMMARY "| B — Unpackaged, runtime-dep | success | unsigned |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "| C — Unpackaged, self-contained | success | unsigned |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "`nMSIX is signed via Azure Trusted Signing (cert profile **${{ env.TS_CertProfile }}**, account **${{ env.TS_AccountName }}**) — installs by double-click, no cert import required. Unpackaged .exe variants ship unsigned for now."
