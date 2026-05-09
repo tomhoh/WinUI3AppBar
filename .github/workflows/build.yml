@@ -64,6 +64,24 @@ jobs:
             /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxPackageDir="$env:GITHUB_WORKSPACE\publish\msix\\"
 
+      # Locate the app MSIX explicitly. The MSIX build also drops Microsoft's
+      # WindowsAppRuntime framework MSIXs under Dependencies/{arch}/ — those
+      # are already signed by CN=Microsoft Corporation, and Trusted Signing
+      # (rightly) returns 403 if we try to re-sign them with our own cert.
+      # Excluding the Dependencies path is what the prior files-folder filter
+      # was missing.
+      - name: Locate app MSIX
+        id: app-msix
+        if: steps.msix.outcome == 'success'
+        shell: pwsh
+        run: |
+          $appMsix = Get-ChildItem -Path "$env:GITHUB_WORKSPACE\publish\msix" -Filter "AppAppBar3_*.msix" -Recurse |
+                     Where-Object { $_.FullName -notmatch '\\Dependencies\\' } |
+                     Select-Object -First 1 -ExpandProperty FullName
+          if (-not $appMsix) { throw "App MSIX not found under publish\msix" }
+          "path=$appMsix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "App MSIX to sign: $appMsix"
+
       - name: Sign MSIX with Azure Trusted Signing
         id: sign-msix
         if: steps.msix.outcome == 'success'
@@ -72,13 +90,10 @@ jobs:
           endpoint: ${{ env.TS_Endpoint }}
           trusted-signing-account-name: ${{ env.TS_AccountName }}
           certificate-profile-name: ${{ env.TS_CertProfile }}
-          files-folder: ${{ github.workspace }}\publish\msix
-          files-folder-filter: msix
-          files-folder-recurse: true
+          files: ${{ steps.app-msix.outputs.path }}
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
-          trace: true
 
       # -----------------------------------------------------------------------
       # Option B — Unpackaged, runtime-dependent. Target machine needs the
