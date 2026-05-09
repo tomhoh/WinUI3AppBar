@@ -96,7 +96,9 @@ jobs:
             /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-runtime-dep\\"
 
       # -----------------------------------------------------------------------
-      # Option C — Unpackaged, fully self-contained. ~100 MB, portable, no prereqs.
+      # Option C — Unpackaged, fully self-contained. ~100 MB, portable.
+      # The follow-up "Bundle VC++ runtime" step copies vcruntime/msvcp DLLs in
+      # so the artifact runs on machines without VC++ Redist installed.
       # -----------------------------------------------------------------------
       - name: Build unpackaged self-contained (Option C)
         shell: pwsh
@@ -111,6 +113,31 @@ jobs:
             /p:WindowsAppSDKSelfContained=true `
             /p:WindowsPackageType=None `
             /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained\\"
+
+      # -----------------------------------------------------------------------
+      # Bundle the Microsoft Visual C++ runtime DLLs into the self-contained
+      # output. WindowsAppSDKSelfContained=true ships the WinAppSDK runtime
+      # files but NOT the VC++ runtime — which Microsoft.ui.xaml.dll links to.
+      # Without these DLLs, launching on a fresh Windows machine fails with
+      # "Unable to load DLL Microsoft.ui.xaml or one of its dependencies"
+      # in the Event Viewer. Copying them here makes Option C truly portable.
+      # -----------------------------------------------------------------------
+      - name: Bundle VC++ runtime in self-contained artifact
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath  = & $vswhere -latest -property installationPath
+          $redistVer = (Get-Content "$vsPath\VC\Auxiliary\Build\Microsoft.VCRedistVersion.default.txt").Trim()
+          $redistRoot = "$vsPath\VC\Redist\MSVC\$redistVer\$env:Platform"
+          $redistDir = Get-ChildItem -Path $redistRoot -Directory -Filter "Microsoft.VC*.CRT" |
+                       Select-Object -First 1 -ExpandProperty FullName
+          if (-not $redistDir) { throw "VC redist not found under $redistRoot" }
+          $dest = "$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained\"
+          Copy-Item -Path "$redistDir\*.dll" -Destination $dest -Force
+          Write-Host "Bundled VC++ runtime from $redistDir into $dest"
+          Get-ChildItem -Path $dest -Filter "*.dll" |
+            Where-Object { $_.Name -match '^(msvcp|vcruntime)' } |
+            Format-Table Name, Length
 
       - name: Upload MSIX artifact
         if: steps.msix.outcome == 'success'
