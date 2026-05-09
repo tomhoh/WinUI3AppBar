@@ -1,0 +1,100 @@
+name: Sign MSIX (test)
+
+# Minimal workflow: build only the MSIX, attempt to sign it via Azure
+# Trusted Signing, upload the (signed-or-not) artifact. Manual-trigger only
+# so it doesn't run on every push while we're still chasing the 403.
+#
+# To run: GitHub repo -> Actions -> "Sign MSIX (test)" -> Run workflow.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sign:
+    runs-on: windows-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      Configuration: Release
+      Platform: x64
+      Solution: AppAppBar3/AppAppBar3.csproj
+      TS_Endpoint: https://wus.codesigning.azure.net/
+      TS_AccountName: tomhoh
+      TS_CertProfile: TMHApplications
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Build MSIX (unsigned)
+        shell: pwsh
+        run: |
+          msbuild $env:Solution `
+            /restore `
+            /p:Configuration=$env:Configuration `
+            /p:Platform=$env:Platform `
+            /p:AppxPackageSigningEnabled=false `
+            /p:GenerateAppxPackageOnBuild=true `
+            /p:GenerateAppInstallerFile=false `
+            /p:AppxBundle=Never `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /p:AppxPackageDir="$env:GITHUB_WORKSPACE\publish\msix\\"
+
+      - name: Locate app MSIX
+        id: app-msix
+        shell: pwsh
+        run: |
+          $appMsix = Get-ChildItem -Path "$env:GITHUB_WORKSPACE\publish\msix" -Filter "AppAppBar3_*.msix" -Recurse |
+                     Where-Object { $_.FullName -notmatch '\\Dependencies\\' } |
+                     Select-Object -First 1 -ExpandProperty FullName
+          if (-not $appMsix) { throw "App MSIX not found under publish\msix" }
+          "path=$appMsix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "App MSIX to sign: $appMsix"
+
+      # Force the signing action's DefaultAzureCredential chain to use only
+      # the env vars set by azure/login@v2 (EnvironmentCredential). Keeps the
+      # token-selection deterministic so a 403 can't be blamed on the wrong
+      # credential type silently winning the race.
+      - name: Sign MSIX
+        id: sign
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: ${{ env.TS_Endpoint }}
+          trusted-signing-account-name: ${{ env.TS_AccountName }}
+          certificate-profile-name: ${{ env.TS_CertProfile }}
+          files: ${{ steps.app-msix.outputs.path }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: true
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+
+      - name: Upload artifact (signed or not)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppAppBar3-MSIX-SignTest
+          path: ${{ steps.app-msix.outputs.path }}
+          if-no-files-found: warn
