@@ -96,6 +96,19 @@ jobs:
             /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-runtime-dep\\"
 
       # -----------------------------------------------------------------------
+      # Stage the app PRI as resources.pri (workaround — see Option C step).
+      # -----------------------------------------------------------------------
+      - name: Stage resources.pri (Option B)
+        shell: pwsh
+        run: |
+          $bin  = "$env:GITHUB_WORKSPACE\AppAppBar3\bin\$env:Platform\$env:Configuration\net8.0-windows10.0.19041.0\win-x64"
+          $src  = Join-Path $bin "AppAppBar3.pri"
+          $dest = "$env:GITHUB_WORKSPACE\publish\unpackaged-runtime-dep\resources.pri"
+          if (-not (Test-Path $src)) { throw "App PRI not found at $src" }
+          Copy-Item -Path $src -Destination $dest -Force
+          Write-Host "Staged $src -> $dest"
+
+      # -----------------------------------------------------------------------
       # Option C — Unpackaged, fully self-contained. ~100 MB, portable.
       # The follow-up "Bundle VC++ runtime" step copies vcruntime/msvcp DLLs in
       # so the artifact runs on machines without VC++ Redist installed.
@@ -113,6 +126,26 @@ jobs:
             /p:WindowsAppSDKSelfContained=true `
             /p:WindowsPackageType=None `
             /p:PublishDir="$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained\\"
+
+      # -----------------------------------------------------------------------
+      # Stage the app PRI as resources.pri. The WinAppSDK 1.8 unpackaged build
+      # emits the app's compiled-XAML resource index as "<AssemblyName>.pri"
+      # in bin\ but never copies it into the publish folder — that copy is
+      # tied to the MSIX packaging path (which is off when WindowsPackageType=
+      # None). Without resources.pri next to the .exe, XamlControlsResources
+      # in App.xaml fails to merge at runtime and the app crashes inside
+      # Microsoft.ui.xaml.dll with 0xc000027b before any managed exception
+      # logging can run. Copy + rename is the documented workaround.
+      # -----------------------------------------------------------------------
+      - name: Stage resources.pri (Option C)
+        shell: pwsh
+        run: |
+          $bin  = "$env:GITHUB_WORKSPACE\AppAppBar3\bin\$env:Platform\$env:Configuration\net8.0-windows10.0.19041.0\win-x64"
+          $src  = Join-Path $bin "AppAppBar3.pri"
+          $dest = "$env:GITHUB_WORKSPACE\publish\unpackaged-self-contained\resources.pri"
+          if (-not (Test-Path $src)) { throw "App PRI not found at $src" }
+          Copy-Item -Path $src -Destination $dest -Force
+          Write-Host "Staged $src -> $dest"
 
       # -----------------------------------------------------------------------
       # Bundle the Microsoft Visual C++ runtime DLLs into the self-contained
